@@ -8,3 +8,4 @@ local.properties
 *.iml
 check_wifi.js
 *.js
+*.apk
