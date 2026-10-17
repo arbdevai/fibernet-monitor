@@ -185,10 +185,16 @@ class RouterRepository(
         return apiClient.blockMacAddress(s.routerIp, s.username, s.password, mac)
     }
 
-    suspend fun unblockDevice(ruleIndex: Int): Result<Boolean> {
+    suspend fun unblockDevice(mac: String, ruleIndex: Int = -1, ruleId: String = ""): Result<Boolean> {
         val s = currentSettings()
         cachedMacFilter = null
-        return apiClient.unblockMacAddress(s.routerIp, s.username, s.password, ruleIndex)
+        return apiClient.unblockMacAddress(s.routerIp, s.username, s.password, mac, ruleIndex, ruleId)
+    }
+
+    suspend fun setMacFilterEnabled(enabled: Boolean): Result<Boolean> {
+        val s = currentSettings()
+        cachedMacFilter = null
+        return apiClient.setMacFilterEnabled(s.routerIp, s.username, s.password, enabled)
     }
 
     suspend fun getWifiConfig(force: Boolean = false): Result<WifiFullConfig> = coroutineScope {

@@ -209,6 +209,54 @@ class RouterApiClient {
         return extractJson(respBody)
     }
 
+    // Helper untuk POST request mutasi dengan auto re-login dan validasi respons router
+    private suspend fun executePost(
+        ip: String,
+        user: String,
+        pass: String,
+        formBuilderAction: (freshSessionId: String) -> FormBody
+    ): String {
+        ensureAuthenticated(ip, user, pass)
+        var sessionId = getFreshSessionId(ip)
+        var form = formBuilderAction(sessionId)
+        var req = Request.Builder().url("http://$ip/cgi-bin/ajax").post(form).build()
+        var respBody = client.newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful) throw Exception("HTTP ${resp.code} from router")
+            resp.body?.string() ?: ""
+        }
+
+        if (respBody.contains("\"session_valid\":0") || respBody.contains("\"session_valid\":\"0\"")) {
+            authMutex.withLock {
+                resetSession()
+                activeRouterIp = ip
+                executeLoginInternal(ip, user, pass)
+            }
+            sessionId = getFreshSessionId(ip)
+            form = formBuilderAction(sessionId)
+            req = Request.Builder().url("http://$ip/cgi-bin/ajax").post(form).build()
+            respBody = client.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) throw Exception("HTTP ${resp.code} from router after re-auth")
+                resp.body?.string() ?: ""
+            }
+        }
+
+        val trimmed = respBody.trim()
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+            try {
+                val obj = json.parseToJsonElement(trimmed).jsonObject
+                val success = obj["success"]?.jsonPrimitive?.content
+                if (success != null && (success.equals("false", ignoreCase = true) || success == "0")) {
+                    val err = obj["error"]?.jsonPrimitive?.content ?: obj["message"]?.jsonPrimitive?.content ?: "Router rejected operation."
+                    throw Exception(err)
+                }
+            } catch (e: Exception) {
+                if (e.message?.contains("Router rejected") == true) throw e
+            }
+        }
+
+        return respBody
+    }
+
     suspend fun getBaseInfo(ip: String, user: String, pass: String): Result<BaseInfoResponse> = safeApiCall {
         val body = executeGet(ip, user, pass, "get_base_info")
         json.decodeFromString<BaseInfoResponse>(body)
@@ -321,61 +369,144 @@ class RouterApiClient {
         json.decodeFromString<MacFilterResponse>(body)
     }
 
+    suspend fun setMacFilterEnabled(
+        ip: String,
+        user: String,
+        pass: String,
+        enabled: Boolean
+    ): Result<Boolean> = safeApiCall {
+        val flag = if (enabled) "1" else "0"
+        executePost(ip, user, pass) { sess ->
+            FormBody.Builder()
+                .add("ajaxmethod", "set_ipv4_mac_filter_info")
+                .add("sessionid", sess)
+                .add("action", "enable")
+                .add("ipv4_mac_filter_enable", flag)
+                .add("MACFEnable", flag)
+                .add("ipv4_mac_filter_mode", "black")
+                .add("MACFMode", "black")
+                .add("_", System.currentTimeMillis().toString())
+                .build()
+        }
+        true
+    }
+
     suspend fun blockMacAddress(
         ip: String,
         user: String,
         pass: String,
         targetMac: String
     ): Result<Boolean> = safeApiCall {
-        ensureAuthenticated(ip, user, pass)
+        val cleanMac = targetMac.trim().uppercase()
+        if (cleanMac.isBlank()) throw Exception("Invalid or empty MAC address.")
 
-        val enableSess = getFreshSessionId(ip)
-        val enableForm = FormBody.Builder()
-            .add("ajaxmethod", "set_ipv4_mac_filter_info")
-            .add("sessionid", enableSess)
-            .add("action", "enable")
-            .add("ipv4_mac_filter_enable", "1")
-            .add("ipv4_mac_filter_mode", "black")
-            .add("_", System.currentTimeMillis().toString())
-            .build()
-        client.newCall(Request.Builder().url("http://$ip/cgi-bin/ajax").post(enableForm).build()).execute().close()
-
-        val addSess = getFreshSessionId(ip)
-        val addForm = FormBody.Builder()
-            .add("ajaxmethod", "set_ipv4_mac_filter_info")
-            .add("sessionid", addSess)
-            .add("action", "add")
-            .add("MAC", targetMac.trim().uppercase())
-            .add("Enable", "1")
-            .add("TimeStart", "00:00")
-            .add("TimeStop", "23:59")
-            .add("_", System.currentTimeMillis().toString())
-            .build()
-
-        client.newCall(Request.Builder().url("http://$ip/cgi-bin/ajax").post(addForm).build()).execute().use { resp ->
-            resp.isSuccessful
+        // 1. Pastikan MAC Filter diaktifkan dalam mode "black" (Blacklist)
+        executePost(ip, user, pass) { sess ->
+            FormBody.Builder()
+                .add("ajaxmethod", "set_ipv4_mac_filter_info")
+                .add("sessionid", sess)
+                .add("action", "enable")
+                .add("ipv4_mac_filter_enable", "1")
+                .add("MACFEnable", "1")
+                .add("ipv4_mac_filter_mode", "black")
+                .add("MACFMode", "black")
+                .add("_", System.currentTimeMillis().toString())
+                .build()
         }
+
+        // 2. Tambahkan aturan blokir MAC ke tabel firewall router
+        executePost(ip, user, pass) { sess ->
+            FormBody.Builder()
+                .add("ajaxmethod", "set_ipv4_mac_filter_info")
+                .add("sessionid", sess)
+                .add("action", "add")
+                .add("MAC", cleanMac)
+                .add("mac", cleanMac)
+                .add("Enable", "1")
+                .add("TimeStart", "00:00")
+                .add("TimeStop", "23:59")
+                .add("_", System.currentTimeMillis().toString())
+                .build()
+        }
+        true
     }
 
     suspend fun unblockMacAddress(
         ip: String,
         user: String,
         pass: String,
-        filterIndex: Int
+        targetMac: String,
+        filterIndex: Int = -1,
+        ruleId: String = ""
     ): Result<Boolean> = safeApiCall {
-        ensureAuthenticated(ip, user, pass)
-        val freshSessionId = getFreshSessionId(ip)
-        val form = FormBody.Builder()
-            .add("ajaxmethod", "set_ipv4_mac_filter_info")
-            .add("sessionid", freshSessionId)
-            .add("action", "delete")
-            .add("ipv4_mac_filter_index", filterIndex.toString())
-            .add("_", System.currentTimeMillis().toString())
-            .build()
+        val cleanMac = targetMac.trim().uppercase()
+        val currentInfo = getMacFilterInfo(ip, user, pass).getOrNull()?.filterInfo
+        val currentList = currentInfo?.filterList.orEmpty()
 
-        client.newCall(Request.Builder().url("http://$ip/cgi-bin/ajax").post(form).build()).execute().use { resp ->
-            resp.isSuccessful
+        val resolvedIndex = if (filterIndex >= 0) filterIndex else currentList.indexOfFirst { it.mac.equals(cleanMac, ignoreCase = true) }
+        val foundRule = currentList.find { it.mac.equals(cleanMac, ignoreCase = true) }
+        val resolvedId = ruleId.ifBlank { foundRule?.id ?: "" }
+        val idxToSend = if (resolvedIndex >= 0) resolvedIndex.toString() else "0"
+
+        // 1. Kirim perintah delete dengan parameter lengkap (MAC + Index + ID)
+        executePost(ip, user, pass) { sess ->
+            val builder = FormBody.Builder()
+                .add("ajaxmethod", "set_ipv4_mac_filter_info")
+                .add("sessionid", sess)
+                .add("action", "delete")
+                .add("ipv4_mac_filter_index", idxToSend)
+                .add("index", idxToSend)
+                .add("Index", idxToSend)
+
+            if (cleanMac.isNotBlank()) {
+                builder.add("MAC", cleanMac)
+                builder.add("mac", cleanMac)
+            }
+            if (resolvedId.isNotBlank()) {
+                builder.add("id", resolvedId)
+                builder.add("ID", resolvedId)
+            }
+            builder.add("_", System.currentTimeMillis().toString())
+            builder.build()
         }
+
+        // 2. Fallback delete jika router menggunakan indeks 1-based tabel (ID berbeda dari 0-based idx)
+        if (resolvedId.isNotBlank() && resolvedId != idxToSend) {
+            try {
+                executePost(ip, user, pass) { sess ->
+                    val builder = FormBody.Builder()
+                        .add("ajaxmethod", "set_ipv4_mac_filter_info")
+                        .add("sessionid", sess)
+                        .add("action", "delete")
+                        .add("ipv4_mac_filter_index", resolvedId)
+                        .add("index", resolvedId)
+                    if (cleanMac.isNotBlank()) {
+                        builder.add("MAC", cleanMac)
+                        builder.add("mac", cleanMac)
+                    }
+                    builder.add("_", System.currentTimeMillis().toString())
+                    builder.build()
+                }
+            } catch (_: Exception) {}
+        }
+
+        // 3. Jika daftar aturan tersisa kosong, otomatis nonaktifkan filter agar router firewall membebaskan koneksi
+        val remaining = currentList.filterNot { it.mac.equals(cleanMac, ignoreCase = true) }
+        if (remaining.isEmpty()) {
+            executePost(ip, user, pass) { sess ->
+                FormBody.Builder()
+                    .add("ajaxmethod", "set_ipv4_mac_filter_info")
+                    .add("sessionid", sess)
+                    .add("action", "enable")
+                    .add("ipv4_mac_filter_enable", "0")
+                    .add("MACFEnable", "0")
+                    .add("ipv4_mac_filter_mode", "black")
+                    .add("MACFMode", "black")
+                    .add("_", System.currentTimeMillis().toString())
+                    .build()
+            }
+        }
+        true
     }
 
     suspend fun rebootRouter(ip: String, user: String, pass: String): Result<Boolean> = safeApiCall {

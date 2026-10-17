@@ -223,11 +223,20 @@ fun SecurityScreen(
                                     color = if (isFilterEnabled) OnCrimsonContainerLight else MaterialTheme.colorScheme.onSurface
                                  )
                                  Text(
-                                     text = if (isFilterEnabled) "Blacklisted devices are immediately blocked by router firewall." else "No active blocking rules applied.",
+                                     text = if (isFilterEnabled) "Blacklisted devices are immediately blocked by router firewall." else "Firewall filter disabled. All devices have normal access.",
                                      style = MaterialTheme.typography.bodySmall,
                                      color = if (isFilterEnabled) OnCrimsonContainerLight.copy(alpha = 0.8f) else MaterialTheme.colorScheme.outline
                                  )
                             }
+                            Switch(
+                                checked = isFilterEnabled,
+                                onCheckedChange = { viewModel.toggleFilter(it) },
+                                enabled = !state.isActionInProgress,
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = CrimsonPrimary
+                                )
+                            )
                         }
                     }
                 }

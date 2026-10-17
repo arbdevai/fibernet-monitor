@@ -11,8 +11,11 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 object FlexibleIntSerializer : KSerializer<Int> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("FlexibleInt", PrimitiveKind.INT)
@@ -366,32 +369,137 @@ data class WlanControlResponse(
     @SerialName("TransmitPower") val transmitPower: String = "100"
 )
 
-@Serializable
+@Serializable(with = MacFilterRuleSerializer::class)
 data class MacFilterRule(
-    @SerialName("mac") val mac: String = "",
-    @SerialName("name") val name: String = "",
-    @SerialName("id") val id: String = "",
-    @SerialName("TimeStart") val timeStart: String = "00:00",
-    @SerialName("TimeStop") val timeStop: String = "23:59",
-    @Serializable(with = FlexibleStringSerializer::class)
-    @SerialName("Enable") val enable: String = "1"
+    val mac: String = "",
+    val name: String = "",
+    val id: String = "",
+    val timeStart: String = "00:00",
+    val timeStop: String = "23:59",
+    val enable: String = "1"
 )
 
+object MacFilterRuleSerializer : KSerializer<MacFilterRule> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("MacFilterRule", PrimitiveKind.STRING)
+    override fun serialize(encoder: Encoder, value: MacFilterRule) {
+        val jsonEncoder = encoder as? kotlinx.serialization.json.JsonEncoder
+        if (jsonEncoder != null) {
+            val obj = kotlinx.serialization.json.buildJsonObject {
+                put("mac", kotlinx.serialization.json.JsonPrimitive(value.mac))
+                put("name", kotlinx.serialization.json.JsonPrimitive(value.name))
+                put("id", kotlinx.serialization.json.JsonPrimitive(value.id))
+                put("TimeStart", kotlinx.serialization.json.JsonPrimitive(value.timeStart))
+                put("TimeStop", kotlinx.serialization.json.JsonPrimitive(value.timeStop))
+                put("Enable", kotlinx.serialization.json.JsonPrimitive(value.enable))
+            }
+            jsonEncoder.encodeJsonElement(obj)
+        } else {
+            encoder.encodeString(value.mac)
+        }
+    }
+
+    override fun deserialize(decoder: Decoder): MacFilterRule {
+        val jsonDecoder = decoder as? JsonDecoder ?: return MacFilterRule()
+        val element = jsonDecoder.decodeJsonElement()
+        if (element !is JsonObject) return MacFilterRule()
+
+        val mac = element["MAC"]?.jsonPrimitive?.content
+            ?: element["mac"]?.jsonPrimitive?.content
+            ?: element["MACAddress"]?.jsonPrimitive?.content
+            ?: element["macAddress"]?.jsonPrimitive?.content
+            ?: ""
+
+        val name = element["name"]?.jsonPrimitive?.content
+            ?: element["Name"]?.jsonPrimitive?.content
+            ?: element["HostName"]?.jsonPrimitive?.content
+            ?: element["hostname"]?.jsonPrimitive?.content
+            ?: ""
+
+        val id = element["id"]?.jsonPrimitive?.content
+            ?: element["ID"]?.jsonPrimitive?.content
+            ?: element["Index"]?.jsonPrimitive?.content
+            ?: element["index"]?.jsonPrimitive?.content
+            ?: element["ipv4_mac_filter_index"]?.jsonPrimitive?.content
+            ?: ""
+
+        val timeStart = element["TimeStart"]?.jsonPrimitive?.content
+            ?: element["timeStart"]?.jsonPrimitive?.content
+            ?: "00:00"
+
+        val timeStop = element["TimeStop"]?.jsonPrimitive?.content
+            ?: element["timeStop"]?.jsonPrimitive?.content
+            ?: "23:59"
+
+        val enable = element["Enable"]?.jsonPrimitive?.content
+            ?: element["enable"]?.jsonPrimitive?.content
+            ?: "1"
+
+        return MacFilterRule(
+            mac = mac,
+            name = name,
+            id = id,
+            timeStart = timeStart,
+            timeStop = timeStop,
+            enable = enable
+        )
+    }
+}
+
 object MacFilterRuleListSerializer : KSerializer<List<MacFilterRule>> {
-    private val delegate = FlexibleListSerializer(MacFilterRule.serializer())
+    private val delegate = FlexibleListSerializer(MacFilterRuleSerializer)
     override val descriptor: SerialDescriptor = delegate.descriptor
     override fun serialize(encoder: Encoder, value: List<MacFilterRule>) = delegate.serialize(encoder, value)
     override fun deserialize(decoder: Decoder): List<MacFilterRule> = delegate.deserialize(decoder)
 }
 
-@Serializable
+@Serializable(with = MacFilterInfoSerializer::class)
 data class MacFilterInfo(
-    @Serializable(with = FlexibleStringSerializer::class)
-    @SerialName("MACFEnable") val enable: String = "0",
-    @SerialName("MACFMode") val mode: String = "black",
-    @Serializable(with = MacFilterRuleListSerializer::class)
-    @SerialName("mac_filter_data") val filterList: List<MacFilterRule> = emptyList()
+    val enable: String = "0",
+    val mode: String = "black",
+    val filterList: List<MacFilterRule> = emptyList()
 )
+
+object MacFilterInfoSerializer : KSerializer<MacFilterInfo> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("MacFilterInfo", PrimitiveKind.STRING)
+    override fun serialize(encoder: Encoder, value: MacFilterInfo) {
+        val jsonEncoder = encoder as? kotlinx.serialization.json.JsonEncoder
+        if (jsonEncoder != null) {
+            val obj = kotlinx.serialization.json.buildJsonObject {
+                put("MACFEnable", kotlinx.serialization.json.JsonPrimitive(value.enable))
+                put("MACFMode", kotlinx.serialization.json.JsonPrimitive(value.mode))
+                put("mac_filter_data", jsonEncoder.json.encodeToJsonElement(MacFilterRuleListSerializer, value.filterList))
+            }
+            jsonEncoder.encodeJsonElement(obj)
+        }
+    }
+
+    override fun deserialize(decoder: Decoder): MacFilterInfo {
+        val jsonDecoder = decoder as? JsonDecoder ?: return MacFilterInfo()
+        val element = jsonDecoder.decodeJsonElement()
+        if (element !is JsonObject) return MacFilterInfo()
+
+        val enable = element["MACFEnable"]?.jsonPrimitive?.content
+            ?: element["ipv4_mac_filter_enable"]?.jsonPrimitive?.content
+            ?: element["enable"]?.jsonPrimitive?.content
+            ?: "0"
+
+        val mode = element["MACFMode"]?.jsonPrimitive?.content
+            ?: element["ipv4_mac_filter_mode"]?.jsonPrimitive?.content
+            ?: element["mode"]?.jsonPrimitive?.content
+            ?: "black"
+
+        val filterListData = element["mac_filter_data"]
+        val list = if (filterListData != null) {
+            try {
+                jsonDecoder.json.decodeFromJsonElement(MacFilterRuleListSerializer, filterListData)
+            } catch (_: Exception) {
+                emptyList()
+            }
+        } else emptyList()
+
+        return MacFilterInfo(enable = enable, mode = mode, filterList = list)
+    }
+}
 
 @Serializable
 data class MacFilterResponse(

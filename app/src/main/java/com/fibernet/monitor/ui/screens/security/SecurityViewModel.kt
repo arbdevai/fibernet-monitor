@@ -34,16 +34,39 @@ class SecurityViewModel(
         loadFilterList()
     }
 
-    fun loadFilterList() {
+    fun loadFilterList(force: Boolean = false) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            val res = repository.getMacFilterList()
+            val res = repository.getMacFilterList(force = force)
             _uiState.update { state ->
                 state.copy(
                     isLoading = false,
                     filterInfo = res.getOrDefault(state.filterInfo),
                     errorMessage = if (res.isFailure) res.exceptionOrNull()?.message else null
                 )
+            }
+        }
+    }
+
+    fun toggleFilter(enable: Boolean) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isActionInProgress = true, errorMessage = null) }
+            val res = repository.setMacFilterEnabled(enable)
+            if (res.isSuccess) {
+                _uiState.update {
+                    it.copy(
+                        isActionInProgress = false,
+                        successMessage = if (enable) "MAC Filtering enabled." else "MAC Filtering disabled. All devices allowed."
+                    )
+                }
+                loadFilterList(force = true)
+            } else {
+                _uiState.update {
+                    it.copy(
+                        isActionInProgress = false,
+                        errorMessage = "Failed to update filter mode: ${res.exceptionOrNull()?.message}"
+                    )
+                }
             }
         }
     }
@@ -83,7 +106,7 @@ class SecurityViewModel(
                         successMessage = "MAC $mac added to router blocklist."
                     )
                 }
-                loadFilterList()
+                loadFilterList(force = true)
             } else {
                 _uiState.update {
                     it.copy(
@@ -107,9 +130,14 @@ class SecurityViewModel(
         val target = _uiState.value.macToUnblock ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isActionInProgress = true, macToUnblock = null) }
-            val ruleIndex = _uiState.value.filterInfo.filterList.indexOf(target).takeIf { it >= 0 }
+            val currentList = _uiState.value.filterInfo.filterList
+            val ruleIndex = currentList.indexOfFirst { it.mac.equals(target.mac, ignoreCase = true) }.takeIf { it >= 0 }
                 ?: (target.id.toIntOrNull()?.minus(1) ?: 0)
-            val res = repository.unblockDevice(ruleIndex)
+            val res = repository.unblockDevice(
+                mac = target.mac,
+                ruleIndex = ruleIndex,
+                ruleId = target.id
+            )
             if (res.isSuccess) {
                 _uiState.update {
                     it.copy(
@@ -117,7 +145,7 @@ class SecurityViewModel(
                         successMessage = "MAC ${target.mac} unblocked successfully."
                     )
                 }
-                loadFilterList()
+                loadFilterList(force = true)
             } else {
                 _uiState.update {
                     it.copy(

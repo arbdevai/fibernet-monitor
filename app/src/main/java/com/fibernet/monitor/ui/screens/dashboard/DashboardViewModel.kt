@@ -133,14 +133,19 @@ class DashboardViewModel(
 
     fun confirmBlockDevice() {
         val target = _uiState.value.deviceToBlock ?: return
+        val mac = target.macAddress.trim()
+        if (mac.isBlank()) {
+            _uiState.update { it.copy(deviceToBlock = null, errorMessage = "Cannot block device: MAC address is unavailable.") }
+            return
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(isActionInProgress = true, deviceToBlock = null) }
-            val res = repository.blockDevice(target.macAddress)
+            val res = repository.blockDevice(mac)
             if (res.isSuccess) {
                 _uiState.update {
                     it.copy(
                         isActionInProgress = false,
-                        successMessage = "Device '${target.displayName}' blocked successfully."
+                        successMessage = "Device '${target.displayName}' ($mac) blocked successfully."
                     )
                 }
                 loadData(isInitial = false)
