@@ -34,6 +34,35 @@ object RouterCrypto {
         return bytesToHex(encryptedBytes)
     }
 
+    /**
+     * Mendekripsi string ciphertext hexadesimal dari respons router FiberHome
+     * (misal SSID atau PreSharedKey) menggunakan AES-128-CBC dengan key = IV = aesKey.
+     */
+    fun decrypt(hexCiphertext: String, aesKey: String): String {
+        if (hexCiphertext.isBlank() || hexCiphertext.length % 2 != 0) return hexCiphertext
+        return try {
+            val keyBytes = aesKey.toByteArray(Charsets.UTF_8)
+            val keySpec = SecretKeySpec(keyBytes, "AES")
+            val ivSpec = IvParameterSpec(keyBytes)
+
+            val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec)
+            val decryptedBytes = cipher.doFinal(hexToBytes(hexCiphertext))
+            String(decryptedBytes, Charsets.UTF_8)
+        } catch (e: Exception) {
+            hexCiphertext
+        }
+    }
+
+    private fun hexToBytes(hex: String): ByteArray {
+        val result = ByteArray(hex.length / 2)
+        for (i in result.indices) {
+            val index = i * 2
+            result[i] = hex.substring(index, index + 2).toInt(16).toByte()
+        }
+        return result
+    }
+
     private fun bytesToHex(bytes: ByteArray): String {
         val hexChars = "0123456789ABCDEF"
         val result = StringBuilder(bytes.size * 2)
@@ -45,3 +74,4 @@ object RouterCrypto {
         return result.toString()
     }
 }
+

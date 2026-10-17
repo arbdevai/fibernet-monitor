@@ -122,7 +122,7 @@ class DashboardViewModel(
         val target = _uiState.value.deviceToBlock ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isActionInProgress = true, deviceToBlock = null) }
-            val res = repository.blockDevice(target.macAddress, target.displayName)
+            val res = repository.blockDevice(target.macAddress)
             if (res.isSuccess) {
                 _uiState.update {
                     it.copy(

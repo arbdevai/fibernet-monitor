@@ -20,6 +20,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fibernet.monitor.data.model.BaseInfoResponse
+import com.fibernet.monitor.data.model.WanItem
+import com.fibernet.monitor.data.repository.CombinedRouterStatus
 import com.fibernet.monitor.ui.components.DeviceCard
 import com.fibernet.monitor.ui.theme.*
 
@@ -64,7 +67,7 @@ fun DashboardScreen(
             },
             text = {
                 Text(
-                    text = "Apakah Anda yakin ingin memblokir akses Wi-Fi untuk '${target.displayName}' (${target.macAddress})? Perangkat ini akan segera diputus dari jaringan.",
+                    text = "Apakah Anda yakin ingin memblokir akses Wi-Fi untuk '${target.displayName}' (${target.macAddress})? Perangkat ini akan segera diputus dari jaringan oleh router.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
@@ -114,8 +117,9 @@ fun DashboardScreen(
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold
                             )
+                            val model = state.routerStatus.baseInfo.modelName.ifBlank { "HG6145F3" }
                             Text(
-                                text = "HG6145F3 • 192.168.1.1",
+                                text = "FiberHome $model • 192.168.1.1",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.outline
                             )
@@ -164,7 +168,7 @@ fun DashboardScreen(
                     ) {
                         CircularProgressIndicator(color = CrimsonPrimary)
                         Text(
-                            text = "Menghubungi router...",
+                            text = "Menghubungi router FiberHome...",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -179,16 +183,26 @@ fun DashboardScreen(
                     // 1. Header Banner Status Router
                     item {
                         RouterStatusBanner(
-                            modelName = state.routerStatus.info.modelName,
-                            firmware = state.routerStatus.info.softwareVersion,
+                            status = state.routerStatus,
                             totalDevices = state.devices.size,
-                            uptimeSeconds = state.routerStatus.home.uptimeSeconds.toLongOrNull() ?: 0L,
                             upSpeedKbps = state.totalUpKbps,
                             downSpeedKbps = state.totalDownKbps
                         )
                     }
 
-                    // 2. Pencarian Perangkat
+                    // 2. Kartu Status Optik GPON Real-Time
+                    item {
+                        OpticalStatusCard(baseInfo = state.routerStatus.baseInfo)
+                    }
+
+                    // 3. Kartu Status WAN & Internet
+                    state.routerStatus.internetWan?.let { wan ->
+                        item {
+                            WanStatusCard(wan = wan)
+                        }
+                    }
+
+                    // 4. Pencarian Perangkat
                     item {
                         OutlinedTextField(
                             value = state.searchQuery,
@@ -222,7 +236,7 @@ fun DashboardScreen(
                         )
                     }
 
-                    // 3. Tab Filter Frekuensi
+                    // 5. Tab Filter Frekuensi
                     item {
                         FilterChipsRow(
                             selectedTab = state.selectedFilter,
@@ -234,7 +248,23 @@ fun DashboardScreen(
                         )
                     }
 
-                    // 4. Daftar Perangkat Aktif
+                    // 6. Header Jumlah Perangkat
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "PERANGKAT TERHUBUNG (${state.filteredDevices.size})",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
+
+                    // 7. Daftar Perangkat Aktif
                     val list = state.filteredDevices
                     if (list.isEmpty()) {
                         item {
@@ -256,23 +286,15 @@ fun DashboardScreen(
 
 @Composable
 private fun RouterStatusBanner(
-    modelName: String,
-    firmware: String,
+    status: CombinedRouterStatus,
     totalDevices: Int,
-    uptimeSeconds: Long,
     upSpeedKbps: Long,
     downSpeedKbps: Long
 ) {
-    val uptimeFormatted = remember(uptimeSeconds) {
-        val days = uptimeSeconds / 86400
-        val hours = (uptimeSeconds % 86400) / 3600
-        val mins = (uptimeSeconds % 3600) / 60
-        buildString {
-            if (days > 0) append("${days}h ")
-            if (hours > 0 || days > 0) append("${hours}j ")
-            append("${mins}m")
-        }
-    }
+    val base = status.baseInfo
+    val modelName = base.modelName.ifBlank { "HG6145F3" }
+    val firmware = base.softwareVersion.ifBlank { "RP3441" }
+    val uptimeFormatted = base.uptimeFormatted.ifBlank { "Aktif" }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -303,9 +325,9 @@ private fun RouterStatusBanner(
                             color = Color.White
                         )
                         Text(
-                            text = if (firmware.isNotBlank()) "Firmware: $firmware" else "GPON Optical Router",
+                            text = "Firmware $firmware • SN: ${base.serialNumber}",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.8f)
+                            color = Color.White.copy(alpha = 0.85f)
                         )
                     }
                     Surface(
@@ -313,7 +335,7 @@ private fun RouterStatusBanner(
                         shape = RoundedCornerShape(10.dp)
                     ) {
                         Text(
-                            text = "Aktif $uptimeFormatted",
+                            text = uptimeFormatted,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Medium,
                             color = Color.White,
@@ -344,6 +366,211 @@ private fun RouterStatusBanner(
                         value = "$downSpeedKbps KB/s",
                         icon = Icons.Rounded.ArrowDownward
                     )
+                }
+
+                // Baris kedua: Beban CPU & RAM
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    StatMetric(
+                        label = "BEBAN CPU",
+                        value = "${base.cpuUsagePercent}%",
+                        icon = Icons.Rounded.Speed
+                    )
+                    StatMetric(
+                        label = "PENGGUNAAN RAM",
+                        value = "${base.ramUsagePercent}%",
+                        icon = Icons.Rounded.Memory
+                    )
+                    StatMetric(
+                        label = "TRAFFIC PON UNDUH",
+                        value = "%.1f MB".format(base.ponDownloadedMb),
+                        icon = Icons.Rounded.Download
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OpticalStatusCard(baseInfo: BaseInfoResponse) {
+    val rxPower = baseInfo.rxPowerDbm
+    val rxColor = when {
+        rxPower >= -24.0 && rxPower <= -8.0 -> SignalExcellent
+        rxPower > -27.0 && rxPower < -24.0 -> SignalGood
+        else -> SignalPoor
+    }
+    val rxStatusLabel = when {
+        rxPower >= -24.0 && rxPower <= -8.0 -> "Sangat Baik"
+        rxPower > -27.0 && rxPower < -24.0 -> "Cukup Baik"
+        else -> "Redaman Tinggi / Buruk"
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Sensors,
+                        contentDescription = null,
+                        tint = CrimsonPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = "Status Optik GPON (Kabel Fiber)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Surface(
+                    color = rxColor.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text(
+                        text = rxStatusLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = rxColor,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            Divider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                OpticalMetricItem(
+                    label = "Rx Power (Terima)",
+                    value = "${baseInfo.rxPowerRaw} dBm",
+                    valueColor = rxColor
+                )
+                OpticalMetricItem(
+                    label = "Tx Power (Pancar)",
+                    value = "${baseInfo.txPowerRaw} dBm"
+                )
+                OpticalMetricItem(
+                    label = "Suhu Modul Optik",
+                    value = "${baseInfo.temperatureRaw} °C"
+                )
+                OpticalMetricItem(
+                    label = "Tegangan Laser",
+                    value = "${baseInfo.supplyVoltageRaw} V"
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun OpticalMetricItem(
+    label: String,
+    value: String,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface
+) {
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+            color = MaterialTheme.colorScheme.outline
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = valueColor,
+            modifier = Modifier.padding(top = 2.dp)
+        )
+    }
+}
+
+@Composable
+private fun WanStatusCard(wan: WanItem) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Language,
+                        contentDescription = null,
+                        tint = Band5GHz,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = "Status Sambungan Internet (WAN)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Surface(
+                    color = if (wan.isConnected) SignalExcellent.copy(alpha = 0.15f) else SignalPoor.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text(
+                        text = if (wan.isConnected) "Terhubung (Connected)" else "Terputus",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (wan.isConnected) SignalExcellent else SignalPoor,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            Divider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("IP Publik:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                    Text(wan.externalIp.ifBlank { "-" }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Gateway ISP:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                    Text(wan.remoteIp.ifBlank { "-" }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("DNS Primer:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                    Text(wan.dnsServers.split(",").firstOrNull() ?: "-", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 }
             }
         }

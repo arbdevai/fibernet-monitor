@@ -2,8 +2,8 @@ package com.fibernet.monitor.ui.screens.tools
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.fibernet.monitor.data.model.DeviceInfoResponse
 import com.fibernet.monitor.data.model.PingResultResponse
+import com.fibernet.monitor.data.repository.CombinedRouterStatus
 import com.fibernet.monitor.data.repository.RouterRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,7 +16,10 @@ data class ToolsUiState(
     val isPinging: Boolean = false,
     val pingHostInput: String = "8.8.8.8",
     val pingResult: PingResultResponse? = null,
-    val deviceInfo: DeviceInfoResponse = DeviceInfoResponse(),
+    val isTracing: Boolean = false,
+    val traceHostInput: String = "1.1.1.1",
+    val traceResults: List<String> = emptyList(),
+    val routerStatus: CombinedRouterStatus = CombinedRouterStatus(),
     val showRebootDialog: Boolean = false,
     val isRebooting: Boolean = false,
     val errorMessage: String? = null,
@@ -31,21 +34,24 @@ class ToolsViewModel(
     val uiState: StateFlow<ToolsUiState> = _uiState.asStateFlow()
 
     init {
-        loadDeviceInfo()
+        loadStatus()
     }
 
-    private fun loadDeviceInfo() {
+    fun loadStatus() {
         viewModelScope.launch {
             val res = repository.getRouterStatus()
             if (res.isSuccess) {
-                val status = res.getOrThrow()
-                _uiState.update { it.copy(deviceInfo = status.info) }
+                _uiState.update { it.copy(routerStatus = res.getOrThrow()) }
             }
         }
     }
 
     fun onPingHostChanged(value: String) {
         _uiState.update { it.copy(pingHostInput = value) }
+    }
+
+    fun onTraceHostChanged(value: String) {
+        _uiState.update { it.copy(traceHostInput = value) }
     }
 
     fun runPing() {
@@ -62,6 +68,26 @@ class ToolsViewModel(
                 it.copy(
                     isPinging = false,
                     pingResult = res.getOrNull(),
+                    errorMessage = if (res.isFailure) res.exceptionOrNull()?.message else null
+                )
+            }
+        }
+    }
+
+    fun runTraceroute() {
+        val host = _uiState.value.traceHostInput.trim()
+        if (host.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "Masukkan host atau IP untuk traceroute") }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isTracing = true, traceResults = emptyList(), errorMessage = null) }
+            val res = repository.runTraceroute(host)
+            _uiState.update {
+                it.copy(
+                    isTracing = false,
+                    traceResults = res.getOrDefault(emptyList()),
                     errorMessage = if (res.isFailure) res.exceptionOrNull()?.message else null
                 )
             }

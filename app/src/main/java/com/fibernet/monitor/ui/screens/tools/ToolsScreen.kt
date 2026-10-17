@@ -13,8 +13,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.fibernet.monitor.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,7 +60,7 @@ fun ToolsScreen(
             },
             text = {
                 Text(
-                    text = "Router FiberHome akan dimulai ulang. Seluruh koneksi internet dan Wi-Fi akan terputus sementara selama sekitar 1-2 menit hingga router selesai booting.",
+                    text = "Router FiberHome akan dimulai ulang secara remote. Seluruh koneksi internet dan Wi-Fi akan terputus sementara selama sekitar 1-2 menit hingga router selesai booting.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
@@ -89,6 +91,15 @@ fun ToolsScreen(
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
+                },
+                actions = {
+                    IconButton(onClick = { viewModel.loadStatus() }) {
+                        Icon(
+                            imageVector = Icons.Rounded.Refresh,
+                            contentDescription = "Segarkan",
+                            tint = CrimsonPrimary
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
@@ -299,7 +310,120 @@ fun ToolsScreen(
                 }
             }
 
-            // 3. Info Teknis Perangkat
+            // 3. Traceroute Tool Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Band5GHz.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Route,
+                                contentDescription = null,
+                                tint = Band5GHz,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "Traceroute Jalur Jaringan",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Analisis hop gateway router menuju server tujuan.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = state.traceHostInput,
+                            onValueChange = { viewModel.onTraceHostChanged(it) },
+                            label = { Text("Host / IP Target") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Band5GHz,
+                                cursorColor = Band5GHz
+                            )
+                        )
+                        Button(
+                            onClick = { viewModel.runTraceroute() },
+                            enabled = !state.isTracing,
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Band5GHz),
+                            modifier = Modifier.height(54.dp)
+                        ) {
+                            if (state.isTracing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text("Lacak")
+                            }
+                        }
+                    }
+
+                    // Hasil Traceroute
+                    if (state.traceResults.isNotEmpty()) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = "HASIL TRACEROUTE (${state.traceResults.size} HOP)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                                state.traceResults.forEach { hop ->
+                                    Text(
+                                        text = hop,
+                                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 4. Info Teknis Riil Perangkat (Dari get_base_info & get_allwan_info)
+            val base = state.routerStatus.baseInfo
+            val internetWan = state.routerStatus.internetWan
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(18.dp),
@@ -313,16 +437,21 @@ fun ToolsScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        text = "SPESIFIKASI ROUTER",
+                        text = "SPESIFIKASI & INFORMASI SISTEM",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.outline
                     )
-                    DetailRow(label = "Model Perangkat", value = "FiberHome ${state.deviceInfo.modelName}")
-                    DetailRow(label = "Versi Firmware", value = state.deviceInfo.softwareVersion.ifBlank { "RP3441" })
-                    DetailRow(label = "Operator", value = state.deviceInfo.operatorName)
-                    DetailRow(label = "Kapasitas Wi-Fi", value = "Dual Band (2.4 GHz & 5 GHz AC)")
-                    DetailRow(label = "Port LAN", value = "4 Port Gigabit Ethernet")
+                    DetailRow(label = "Model Perangkat", value = "FiberHome ${base.modelName.ifBlank { "HG6145F3" }}")
+                    DetailRow(label = "Nomor Seri (SN)", value = base.serialNumber.ifBlank { "FHTTC18477E7" })
+                    DetailRow(label = "GPON Serial (gponsn)", value = base.gponSn.ifBlank { "-" })
+                    DetailRow(label = "Versi Firmware", value = base.softwareVersion.ifBlank { "RP3441" })
+                    DetailRow(label = "Versi Hardware", value = base.hardwareVersion.ifBlank { "WKE2.094.476A01" })
+                    DetailRow(label = "MAC Address Gateway", value = base.bridgeMac.ifBlank { "D4:00:68:4E:9D:C8" })
+                    DetailRow(label = "Akses WAN", value = "${base.wanAccessType} (${base.uptimeFormatted})")
+                    DetailRow(label = "Status PPPoE Internet", value = internetWan?.connectionStatus ?: "Connected")
+                    DetailRow(label = "IP Publik WAN", value = internetWan?.externalIp ?: "-")
+                    DetailRow(label = "Gateway ISP", value = internetWan?.remoteIp ?: "-")
                 }
             }
         }

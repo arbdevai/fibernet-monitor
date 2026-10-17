@@ -75,12 +75,12 @@ class SecurityViewModel(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isActionInProgress = true, showAddDialog = false) }
-            val res = repository.blockDevice(mac, name)
+            val res = repository.blockDevice(mac)
             if (res.isSuccess) {
                 _uiState.update {
                     it.copy(
                         isActionInProgress = false,
-                        successMessage = "MAC $mac berhasil ditambahkan ke daftar blokir."
+                        successMessage = "MAC $mac berhasil ditambahkan ke daftar blokir router."
                     )
                 }
                 loadFilterList()
@@ -107,12 +107,14 @@ class SecurityViewModel(
         val target = _uiState.value.macToUnblock ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isActionInProgress = true, macToUnblock = null) }
-            val res = repository.unblockDevice(target.mac)
+            val ruleIndex = _uiState.value.filterInfo.filterList.indexOf(target).takeIf { it >= 0 }
+                ?: (target.id.toIntOrNull()?.minus(1) ?: 0)
+            val res = repository.unblockDevice(ruleIndex)
             if (res.isSuccess) {
                 _uiState.update {
                     it.copy(
                         isActionInProgress = false,
-                        successMessage = "Perangkat '${target.name}' (${target.mac}) berhasil dibuka blokirnya."
+                        successMessage = "Blokir untuk MAC ${target.mac} berhasil dihapus."
                     )
                 }
                 loadFilterList()

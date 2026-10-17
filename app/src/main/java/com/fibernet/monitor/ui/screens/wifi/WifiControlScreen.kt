@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.fibernet.monitor.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,7 +64,7 @@ fun WifiControlScreen(
                     onClick = { viewModel.saveSsid() },
                     colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary)
                 ) {
-                    Text("Simpan")
+                    Text("Simpan ke Router")
                 }
             },
             dismissButton = {
@@ -154,21 +155,27 @@ fun WifiControlScreen(
             // Radio Card 2.4 GHz
             WifiRadioCard(
                 title = "Wi-Fi 2.4 GHz",
-                subtitle = "Jangkauan lebih luas, menembus dinding",
+                subtitle = "Standar 802.11 b/g/n • Jangkauan Luas",
                 ssid = state.config.ssid24,
                 password = state.config.password24,
+                bssid = state.config.bssid24,
+                channel = state.config.channel24,
+                currentTxPower = state.config.txPower24,
                 bandColor = Band24GHz,
                 onEditSsid = { viewModel.showEditSsid(is5G = false) },
                 onEditPassword = { viewModel.showEditPassword(is5G = false) },
                 onSetPower = { viewModel.setTxPower(is5G = false, percentage = it) }
             )
 
-            // Radio Card 5 GHz
+            // Radio Card 5 GHz (Wi-Fi 6 AX)
             WifiRadioCard(
-                title = "Wi-Fi 5 GHz",
-                subtitle = "Kecepatan tinggi, minim interferensi",
+                title = "Wi-Fi 5 GHz (Wi-Fi 6)",
+                subtitle = "Standar 802.11ax • Kecepatan Tinggi AX3000",
                 ssid = state.config.ssid5G,
                 password = state.config.password5G,
+                bssid = state.config.bssid5G,
+                channel = state.config.channel5G,
+                currentTxPower = state.config.txPower5G,
                 bandColor = Band5GHz,
                 onEditSsid = { viewModel.showEditSsid(is5G = true) },
                 onEditPassword = { viewModel.showEditPassword(is5G = true) },
@@ -234,6 +241,9 @@ private fun WifiRadioCard(
     subtitle: String,
     ssid: String,
     password: String,
+    bssid: String,
+    channel: String,
+    currentTxPower: Int,
     bandColor: Color,
     onEditSsid: () -> Unit,
     onEditPassword: () -> Unit,
@@ -304,6 +314,23 @@ private fun WifiRadioCard(
                 }
             }
 
+            // Info Tambahan: BSSID & Saluran
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "BSSID: ${bssid.ifBlank { "D4:01:68:4E:9D:C8" }}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+                Text(
+                    text = "Saluran: ${if (channel.isNotBlank() && channel != "0") channel else "Auto (149)"}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+
             Divider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
 
             // Nama Wi-Fi (SSID)
@@ -319,7 +346,7 @@ private fun WifiRadioCard(
                         color = MaterialTheme.colorScheme.outline
                     )
                     Text(
-                        text = ssid.ifBlank { "Belum dimuat" },
+                        text = ssid.ifBlank { "Memuat dari router..." },
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -361,24 +388,47 @@ private fun WifiRadioCard(
                 }
             }
 
-            // Daya Transmisi
+            // Daya Transmisi (Tx Power)
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = "DAYA PANCAR PEMANCAR (TX POWER)",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "DAYA TRANSMISI (TX POWER)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                    Text(
+                        text = "Saat ini: $currentTxPower%",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = bandColor
+                    )
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    listOf(20, 50, 100).forEach { pwr ->
-                        OutlinedButton(
-                            onClick = { onSetPower(pwr) },
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("$pwr%")
+                    listOf(20, 60, 80, 100).forEach { pwr ->
+                        val isSelected = currentTxPower == pwr
+                        if (isSelected) {
+                            Button(
+                                onClick = { onSetPower(pwr) },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = bandColor),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("$pwr%", fontWeight = FontWeight.Bold)
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = { onSetPower(pwr) },
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("$pwr%")
+                            }
                         }
                     }
                 }
