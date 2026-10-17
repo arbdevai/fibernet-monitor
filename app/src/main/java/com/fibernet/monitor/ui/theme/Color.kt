@@ -33,6 +33,8 @@ val SignalExcellent = Color(0xFF16A34A) // > -65 dBm
 val SignalGood = Color(0xFF22C55E)      // -65 to -75 dBm
 val SignalFair = Color(0xFFEAB308)      // -75 to -85 dBm
 val SignalWeak = Color(0xFFEF4444)      // < -85 dBm
+val SignalPoor = SignalWeak             // Alias for redaman/koneksi buruk
+
 
 val Band24GHz = Color(0xFF2563EB)
 val Band5GHz = Color(0xFF7C3AED)

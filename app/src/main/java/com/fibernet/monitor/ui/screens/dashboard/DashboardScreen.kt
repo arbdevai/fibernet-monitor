@@ -400,7 +400,7 @@ private fun OpticalStatusCard(baseInfo: BaseInfoResponse) {
     val rxColor = when {
         rxPower >= -24.0 && rxPower <= -8.0 -> SignalExcellent
         rxPower > -27.0 && rxPower < -24.0 -> SignalGood
-        else -> SignalPoor
+        else -> SignalWeak
     }
     val rxStatusLabel = when {
         rxPower >= -24.0 && rxPower <= -8.0 -> "Sangat Baik"
@@ -541,14 +541,14 @@ private fun WanStatusCard(wan: WanItem) {
                     )
                 }
                 Surface(
-                    color = if (wan.isConnected) SignalExcellent.copy(alpha = 0.15f) else SignalPoor.copy(alpha = 0.15f),
+                    color = if (wan.isConnected) SignalExcellent.copy(alpha = 0.15f) else SignalWeak.copy(alpha = 0.15f),
                     shape = RoundedCornerShape(6.dp)
                 ) {
                     Text(
                         text = if (wan.isConnected) "Terhubung (Connected)" else "Terputus",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = if (wan.isConnected) SignalExcellent else SignalPoor,
+                        color = if (wan.isConnected) SignalExcellent else SignalWeak,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     )
                 }
