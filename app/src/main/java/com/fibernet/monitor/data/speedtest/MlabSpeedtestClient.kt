@@ -67,10 +67,14 @@ class MlabSpeedtestClient(
             throw Exception("Unable to connect to M-Lab network: ${e.localizedMessage}")
         }
 
-        val jsonObject = jsonParser.parseToJsonElement(locateResponseStr).jsonObject
+        val jsonObject = try {
+            jsonParser.parseToJsonElement(locateResponseStr).jsonObject
+        } catch (e: Exception) {
+            throw Exception("Failed to parse M-Lab locator response.")
+        }
         val resultsArray = jsonObject["results"]?.jsonArray
         if (resultsArray.isNullOrEmpty()) {
-            throw Exception("No nearest M-Lab server available.")
+            throw Exception("No nearest M-Lab server available in your region.")
         }
 
         val firstResult = resultsArray[0].jsonObject
@@ -79,15 +83,15 @@ class MlabSpeedtestClient(
         val city = locationObj?.get("city")?.jsonPrimitive?.content ?: "Indonesia"
         val country = locationObj?.get("country")?.jsonPrimitive?.content ?: "ID"
         val urlsObj = firstResult["urls"]?.jsonObject
-            ?: throw Exception("URL NDT7 tidak ditemukan pada server terpilih.")
+            ?: throw Exception("NDT7 URL not found on selected M-Lab server.")
 
         val downloadUrl = urlsObj["wss:///ndt/v7/download"]?.jsonPrimitive?.content
             ?: urlsObj["ws:///ndt/v7/download"]?.jsonPrimitive?.content
-            ?: throw Exception("URL Download NDT7 tidak tersedia.")
+            ?: throw Exception("NDT7 Download URL unavailable.")
 
         val uploadUrl = urlsObj["wss:///ndt/v7/upload"]?.jsonPrimitive?.content
             ?: urlsObj["ws:///ndt/v7/upload"]?.jsonPrimitive?.content
-            ?: throw Exception("URL Upload NDT7 tidak tersedia.")
+            ?: throw Exception("NDT7 Upload URL unavailable.")
 
         val serverDisplayCity = "$city, $country"
 

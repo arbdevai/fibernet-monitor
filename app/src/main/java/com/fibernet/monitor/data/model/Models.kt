@@ -1,7 +1,89 @@
 package com.fibernet.monitor.data.model
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.intOrNull
+
+object FlexibleIntSerializer : KSerializer<Int> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("FlexibleInt", PrimitiveKind.INT)
+    override fun serialize(encoder: Encoder, value: Int) = encoder.encodeInt(value)
+    override fun deserialize(decoder: Decoder): Int {
+        val jsonDecoder = decoder as? JsonDecoder
+        if (jsonDecoder != null) {
+            val element = jsonDecoder.decodeJsonElement()
+            return if (element is JsonPrimitive) {
+                element.intOrNull ?: element.content.toIntOrNull() ?: 0
+            } else {
+                0
+            }
+        }
+        return try {
+            decoder.decodeInt()
+        } catch (_: Exception) {
+            try {
+                decoder.decodeString().toIntOrNull() ?: 0
+            } catch (_: Exception) {
+                0
+            }
+        }
+    }
+}
+
+object FlexibleStringSerializer : KSerializer<String> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("FlexibleString", PrimitiveKind.STRING)
+    override fun serialize(encoder: Encoder, value: String) = encoder.encodeString(value)
+    override fun deserialize(decoder: Decoder): String {
+        val jsonDecoder = decoder as? JsonDecoder
+        if (jsonDecoder != null) {
+            val element = jsonDecoder.decodeJsonElement()
+            return if (element is JsonPrimitive) {
+                element.content
+            } else {
+                element.toString()
+            }
+        }
+        return try {
+            decoder.decodeString()
+        } catch (_: Exception) {
+            try {
+                decoder.decodeInt().toString()
+            } catch (_: Exception) {
+                ""
+            }
+        }
+    }
+}
+
+class FlexibleListSerializer<T>(elementSerializer: KSerializer<T>) : KSerializer<List<T>> {
+    private val delegate = ListSerializer(elementSerializer)
+    override val descriptor: SerialDescriptor = delegate.descriptor
+    override fun serialize(encoder: Encoder, value: List<T>) = delegate.serialize(encoder, value)
+    override fun deserialize(decoder: Decoder): List<T> {
+        val jsonDecoder = decoder as? JsonDecoder
+        if (jsonDecoder != null) {
+            val element = jsonDecoder.decodeJsonElement()
+            if (element !is JsonArray) {
+                return emptyList()
+            }
+            return jsonDecoder.json.decodeFromJsonElement(delegate, element)
+        }
+        return try {
+            delegate.deserialize(decoder)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+}
 
 @Serializable
 data class DeviceItem(
@@ -9,13 +91,19 @@ data class DeviceItem(
     @SerialName("IPAddress") val ipAddressRaw: String = "",
     @SerialName("MACAddress") val macAddress: String = "",
     @SerialName("AccessType") val accessType: String = "Unknown",
+    @Serializable(with = FlexibleIntSerializer::class)
     @SerialName("rssi") val rssi: Int = 0,
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("UpSpeed") val upSpeedRaw: String = "0",
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("DownSpeed") val downSpeedRaw: String = "0",
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("Active") val active: String = "0",
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("ClientUpTime") val clientUpTime: String = "0",
     @SerialName("OperatingStandard") val operatingStandard: String = "",
     @SerialName("DeviceType") val deviceType: String = "",
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("LeaseTimeRemaining") val leaseTimeRemaining: String = "0"
 ) {
     val ipAddress: String
@@ -34,23 +122,35 @@ data class DeviceItem(
         get() = (downSpeedRaw.toLongOrNull() ?: 0L) / 1024L
 }
 
+object DeviceItemListSerializer : KSerializer<List<DeviceItem>> {
+    private val delegate = FlexibleListSerializer(DeviceItem.serializer())
+    override val descriptor: SerialDescriptor = delegate.descriptor
+    override fun serialize(encoder: Encoder, value: List<DeviceItem>) = delegate.serialize(encoder, value)
+    override fun deserialize(decoder: Decoder): List<DeviceItem> = delegate.deserialize(decoder)
+}
+
 @Serializable
 data class LanStatusResponse(
     @SerialName("sessionid") val sessionId: String = "",
+    @Serializable(with = FlexibleIntSerializer::class)
     @SerialName("session_valid") val sessionValid: Int = 0,
     @SerialName("lan_status") val lanStatus: LanStatusData = LanStatusData()
 )
 
 @Serializable
 data class LanStatusData(
+    @Serializable(with = FlexibleIntSerializer::class)
     @SerialName("lan_port_num") val lanPortNum: Int = 4,
+    @Serializable(with = FlexibleIntSerializer::class)
     @SerialName("wifi_num_all") val wifiNumAll: Int = 16,
+    @Serializable(with = DeviceItemListSerializer::class)
     @SerialName("data") val devices: List<DeviceItem> = emptyList()
 )
 
 @Serializable
 data class HomeInfoResponse(
     @SerialName("sessionid") val sessionId: String = "",
+    @Serializable(with = FlexibleIntSerializer::class)
     @SerialName("session_valid") val sessionValid: Int = 0,
     @SerialName("brmac") val bridgeMac: String = "",
     @SerialName("uptime") val uptimeSeconds: String = "0",
@@ -64,18 +164,21 @@ data class HomeInfoResponse(
 @Serializable
 data class DeviceInfoResponse(
     @SerialName("sessionid") val sessionId: String = "",
+    @Serializable(with = FlexibleIntSerializer::class)
     @SerialName("session_valid") val sessionValid: Int = 0,
     @SerialName("ModelName") val modelName: String = "HG6145F3",
     @SerialName("SoftwareVersion") val softwareVersion: String = "",
     @SerialName("operator_name") val operatorName: String = "IDN_SURGE",
     @SerialName("wifi_cap") val wifiCap: String = "1",
     @SerialName("wifi5_cap") val wifi5Cap: String = "1",
+    @Serializable(with = FlexibleIntSerializer::class)
     @SerialName("lan_port_num") val lanPortNum: Int = 4
 )
 
 @Serializable
 data class BaseInfoResponse(
     @SerialName("sessionid") val sessionId: String = "",
+    @Serializable(with = FlexibleIntSerializer::class)
     @SerialName("session_valid") val sessionValid: Int = 0,
     @SerialName("ModelName") val modelName: String = "HG6145F3",
     @SerialName("HardwareVersion") val hardwareVersion: String = "",
@@ -152,15 +255,8 @@ data class BaseInfoResponse(
 }
 
 @Serializable
-data class AllWanResponse(
-    @SerialName("sessionid") val sessionId: String = "",
-    @SerialName("session_valid") val sessionValid: Int = 0,
-    @SerialName("pon_type") val ponType: String = "GPON",
-    @SerialName("wan") val wanList: List<WanItem> = emptyList()
-)
-
-@Serializable
 data class WanItem(
+    @Serializable(with = FlexibleIntSerializer::class)
     @SerialName("wan_index") val wanIndex: Int = 1,
     @SerialName("Name") val name: String = "",
     @SerialName("ConnectionType") val connectionType: String = "",
@@ -171,7 +267,9 @@ data class WanItem(
     @SerialName("RemoteIPAddress") val remoteIpRaw: String = "",
     @SerialName("DNSServers") val dnsServersRaw: String = "",
     @SerialName("MACAddress") val macAddress: String = "",
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("Uptime") val uptime: String = "0",
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("mtu") val mtu: String = "1492",
     @SerialName("WAN_url") val wanUrl: String = ""
 ) {
@@ -188,17 +286,40 @@ data class WanItem(
         get() = dnsServersRaw.replace("_point_", ".")
 }
 
+object WanItemListSerializer : KSerializer<List<WanItem>> {
+    private val delegate = FlexibleListSerializer(WanItem.serializer())
+    override val descriptor: SerialDescriptor = delegate.descriptor
+    override fun serialize(encoder: Encoder, value: List<WanItem>) = delegate.serialize(encoder, value)
+    override fun deserialize(decoder: Decoder): List<WanItem> = delegate.deserialize(decoder)
+}
+
+@Serializable
+data class AllWanResponse(
+    @SerialName("sessionid") val sessionId: String = "",
+    @Serializable(with = FlexibleIntSerializer::class)
+    @SerialName("session_valid") val sessionValid: Int = 0,
+    @SerialName("pon_type") val ponType: String = "GPON",
+    @Serializable(with = WanItemListSerializer::class)
+    @SerialName("wan") val wanList: List<WanItem> = emptyList()
+)
+
 @Serializable
 data class WifiStatusItem(
+    @Serializable(with = FlexibleIntSerializer::class)
     @SerialName("index") val index: Int = 1,
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("ConfigActive") val configActive: String = "1",
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("Enable") val enable: String = "1",
     @SerialName("SSID") val ssid: String = "",
     @SerialName("PreSharedKey") val preSharedKey: String = "",
     @SerialName("BSSID") val bssid: String = "",
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("X_FH_SSIDHide") val hideSsid: String = "1",
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("Channel") val channel: String = "0",
     @SerialName("Standard") val standard: String = "bgn",
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("RadioEnabled") val radioEnabled: String = "1",
     @SerialName("BeaconType") val beaconType: String = "11i",
     @SerialName("WPAEncryptionModes") val wpaEncryptionModes: String = "AESEncryption",
@@ -211,39 +332,38 @@ data class WifiStatusItem(
         get() = enable == "1"
 }
 
+object WifiStatusItemListSerializer : KSerializer<List<WifiStatusItem>> {
+    private val delegate = FlexibleListSerializer(WifiStatusItem.serializer())
+    override val descriptor: SerialDescriptor = delegate.descriptor
+    override fun serialize(encoder: Encoder, value: List<WifiStatusItem>) = delegate.serialize(encoder, value)
+    override fun deserialize(decoder: Decoder): List<WifiStatusItem> = delegate.deserialize(decoder)
+}
+
 @Serializable
 data class WifiStatus2GResponse(
     @SerialName("sessionid") val sessionId: String = "",
+    @Serializable(with = FlexibleIntSerializer::class)
     @SerialName("session_valid") val sessionValid: Int = 0,
+    @Serializable(with = WifiStatusItemListSerializer::class)
     @SerialName("wifi_status") val list: List<WifiStatusItem> = emptyList()
 )
 
 @Serializable
 data class WifiStatus5GResponse(
     @SerialName("sessionid") val sessionId: String = "",
+    @Serializable(with = FlexibleIntSerializer::class)
     @SerialName("session_valid") val sessionValid: Int = 0,
+    @Serializable(with = WifiStatusItemListSerializer::class)
     @SerialName("wifi_status5g") val list: List<WifiStatusItem> = emptyList()
 )
 
 @Serializable
 data class WlanControlResponse(
     @SerialName("sessionid") val sessionId: String = "",
+    @Serializable(with = FlexibleIntSerializer::class)
     @SerialName("session_valid") val sessionValid: Int = 0,
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("TransmitPower") val transmitPower: String = "100"
-)
-
-@Serializable
-data class MacFilterResponse(
-    @SerialName("sessionid") val sessionId: String = "",
-    @SerialName("session_valid") val sessionValid: Int = 0,
-    @SerialName("ipv4_mac_filter_info") val filterInfo: MacFilterInfo = MacFilterInfo()
-)
-
-@Serializable
-data class MacFilterInfo(
-    @SerialName("MACFEnable") val enable: String = "0",
-    @SerialName("MACFMode") val mode: String = "black",
-    @SerialName("mac_filter_data") val filterList: List<MacFilterRule> = emptyList()
 )
 
 @Serializable
@@ -253,17 +373,49 @@ data class MacFilterRule(
     @SerialName("id") val id: String = "",
     @SerialName("TimeStart") val timeStart: String = "00:00",
     @SerialName("TimeStop") val timeStop: String = "23:59",
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("Enable") val enable: String = "1"
+)
+
+object MacFilterRuleListSerializer : KSerializer<List<MacFilterRule>> {
+    private val delegate = FlexibleListSerializer(MacFilterRule.serializer())
+    override val descriptor: SerialDescriptor = delegate.descriptor
+    override fun serialize(encoder: Encoder, value: List<MacFilterRule>) = delegate.serialize(encoder, value)
+    override fun deserialize(decoder: Decoder): List<MacFilterRule> = delegate.deserialize(decoder)
+}
+
+@Serializable
+data class MacFilterInfo(
+    @Serializable(with = FlexibleStringSerializer::class)
+    @SerialName("MACFEnable") val enable: String = "0",
+    @SerialName("MACFMode") val mode: String = "black",
+    @Serializable(with = MacFilterRuleListSerializer::class)
+    @SerialName("mac_filter_data") val filterList: List<MacFilterRule> = emptyList()
+)
+
+@Serializable
+data class MacFilterResponse(
+    @SerialName("sessionid") val sessionId: String = "",
+    @Serializable(with = FlexibleIntSerializer::class)
+    @SerialName("session_valid") val sessionValid: Int = 0,
+    @SerialName("ipv4_mac_filter_info") val filterInfo: MacFilterInfo = MacFilterInfo()
 )
 
 @Serializable
 data class PingResultResponse(
-    @SerialName("session_valid") val sessionValid: Int = 0,
+    @Serializable(with = FlexibleIntSerializer::class)
+    @SerialName("session_valid") val sessionValid: Int = 1,
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("DiagnosticsState") val diagnosticsState: String = "",
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("SuccessCount") val successCount: String = "0",
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("FailureCount") val failureCount: String = "0",
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("AverageResponseTime") val avgResponseTime: String = "0",
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("MinimumResponseTime") val minResponseTime: String = "0",
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("MaximumResponseTime") val maxResponseTime: String = "0"
 ) {
     val isComplete: Boolean
@@ -273,8 +425,11 @@ data class PingResultResponse(
 @Serializable
 data class TracerouteResultResponse(
     @SerialName("sessionid") val sessionId: String = "",
-    @SerialName("session_valid") val sessionValid: Int = 0,
+    @Serializable(with = FlexibleIntSerializer::class)
+    @SerialName("session_valid") val sessionValid: Int = 1,
+    @Serializable(with = FlexibleStringSerializer::class)
     @SerialName("DiagnosticsState") val diagnosticsState: String = "",
+    @Serializable(with = FlexibleIntSerializer::class)
     @SerialName("Resultcount") val resultCount: Int = 0,
     @SerialName("DiagnosticsResult1") val res1: String? = null,
     @SerialName("DiagnosticsResult2") val res2: String? = null,
@@ -285,9 +440,14 @@ data class TracerouteResultResponse(
     @SerialName("DiagnosticsResult7") val res7: String? = null,
     @SerialName("DiagnosticsResult8") val res8: String? = null,
     @SerialName("DiagnosticsResult9") val res9: String? = null,
-    @SerialName("DiagnosticsResult10") val res10: String? = null
+    @SerialName("DiagnosticsResult10") val res10: String? = null,
+    @SerialName("DiagnosticsResult11") val res11: String? = null,
+    @SerialName("DiagnosticsResult12") val res12: String? = null,
+    @SerialName("DiagnosticsResult13") val res13: String? = null,
+    @SerialName("DiagnosticsResult14") val res14: String? = null,
+    @SerialName("DiagnosticsResult15") val res15: String? = null
 ) {
     val hops: List<String>
-        get() = listOfNotNull(res1, res2, res3, res4, res5, res6, res7, res8, res9, res10)
+        get() = listOfNotNull(res1, res2, res3, res4, res5, res6, res7, res8, res9, res10, res11, res12, res13, res14, res15)
             .filter { it.isNotBlank() }
 }

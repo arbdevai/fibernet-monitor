@@ -74,13 +74,29 @@ class RouterApiClient {
         }
     }
 
+    private fun extractJson(body: String): String {
+        val trimmed = body.trim()
+        val start = trimmed.indexOf('{')
+        val end = trimmed.lastIndexOf('}')
+        if (start != -1 && end != -1 && end >= start) {
+            return trimmed.substring(start, end + 1)
+        }
+        val arrayStart = trimmed.indexOf('[')
+        val arrayEnd = trimmed.lastIndexOf(']')
+        if (arrayStart != -1 && arrayEnd != -1 && arrayEnd >= arrayStart) {
+            return trimmed.substring(arrayStart, arrayEnd + 1)
+        }
+        throw Exception("Invalid response received from router. Gateway may be busy or rebooting.")
+    }
+
     suspend fun getFreshSessionId(ip: String): String = withContext(Dispatchers.IO) {
         val sessUrl = "http://$ip/cgi-bin/ajax?ajaxmethod=get_refresh_sessionid"
         val sessReq = Request.Builder().url(sessUrl).get().build()
         client.newCall(sessReq).execute().use { resp ->
             if (!resp.isSuccessful) throw Exception("Failed to acquire fresh session token (HTTP ${resp.code})")
             val body = resp.body?.string() ?: ""
-            val obj = json.parseToJsonElement(body).jsonObject
+            val jsonClean = extractJson(body)
+            val obj = json.parseToJsonElement(jsonClean).jsonObject
             val id = obj["sessionid"]?.jsonPrimitive?.content ?: ""
             if (id.isNotBlank()) lastSessionId = id
             id
@@ -99,7 +115,8 @@ class RouterApiClient {
         val acsResp = client.newCall(acsReq).execute().use { resp ->
             if (!resp.isSuccessful) throw Exception("Failed to contact router (HTTP ${resp.code})")
             val body = resp.body?.string() ?: throw Exception("Empty response from router")
-            val obj = json.parseToJsonElement(body).jsonObject
+            val jsonClean = extractJson(body)
+            val obj = json.parseToJsonElement(jsonClean).jsonObject
             obj["acsRandom"]?.jsonPrimitive?.content ?: throw Exception("Invalid security token from router")
         }
 
@@ -127,7 +144,8 @@ class RouterApiClient {
 
         client.newCall(loginReq).execute().use { resp ->
             val body = resp.body?.string() ?: ""
-            val obj = json.parseToJsonElement(body).jsonObject
+            val jsonClean = extractJson(body)
+            val obj = json.parseToJsonElement(jsonClean).jsonObject
             val loginResult = obj["login_result"]?.jsonPrimitive?.content?.toIntOrNull() ?: -1
             if (loginResult == 0) {
                 lastSessionId = sessId
@@ -164,7 +182,7 @@ class RouterApiClient {
             ensureAuthenticated(ip, user, pass)
             respBody = client.newCall(Request.Builder().url(url).get().build()).execute().use { it.body?.string() ?: "" }
         }
-        return respBody
+        return extractJson(respBody)
     }
 
     suspend fun getBaseInfo(ip: String, user: String, pass: String): Result<BaseInfoResponse> = safeApiCall {
@@ -372,33 +390,32 @@ class RouterApiClient {
     ): Result<PingResultResponse> = safeApiCall {
         ensureAuthenticated(ip, user, pass)
         val sess1 = getFreshSessionId(ip)
+        val targetWan = wanUrl.ifBlank { "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1." }
         val startForm = FormBody.Builder()
-            .add("ajaxmethod", "set_ping_info")
+            .add("ajaxmethod", "do_ping")
             .add("sessionid", sess1)
-            .add("action", "start")
-            .add("host", host.trim())
-            .add("WAN_url", wanUrl)
+            .add("address", host.trim())
+            .add("count", "4")
+            .add("WAN_url", targetWan)
+            .add("X_FH_WhoRequest", "web")
             .add("IPVersion", "1")
-            .add("NumberOfRepetitions", "4")
-            .add("DataBlockSize", "32")
-            .add("Timeout", "1000")
             .add("_", System.currentTimeMillis().toString())
             .build()
         client.newCall(Request.Builder().url("http://$ip/cgi-bin/ajax").post(startForm).build()).execute().close()
 
-        kotlinx.coroutines.delay(2000)
-
-        val sess2 = getFreshSessionId(ip)
-        val queryForm = FormBody.Builder()
-            .add("ajaxmethod", "get_ping_info")
-            .add("sessionid", sess2)
-            .add("_", System.currentTimeMillis().toString())
-            .build()
-
-        client.newCall(Request.Builder().url("http://$ip/cgi-bin/ajax").post(queryForm).build()).execute().use { resp ->
-            val body = resp.body?.string() ?: ""
-            json.decodeFromString<PingResultResponse>(body)
+        var finalResult = PingResultResponse()
+        for (i in 1..5) {
+            kotlinx.coroutines.delay(1500)
+            try {
+                val body = executeGet(ip, user, pass, "get_ping_result")
+                val parsed = json.decodeFromString<PingResultResponse>(body)
+                finalResult = parsed
+                if (parsed.isComplete || (parsed.successCount.toIntOrNull() ?: 0) > 0) {
+                    break
+                }
+            } catch (_: Exception) {}
         }
+        finalResult
     }
 
     suspend fun runTraceroute(
@@ -410,32 +427,32 @@ class RouterApiClient {
     ): Result<List<String>> = safeApiCall {
         ensureAuthenticated(ip, user, pass)
         val sess1 = getFreshSessionId(ip)
+        val targetWan = wanUrl.ifBlank { "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1." }
         val startForm = FormBody.Builder()
-            .add("ajaxmethod", "set_traceroute_info")
+            .add("ajaxmethod", "do_traceroute")
             .add("sessionid", sess1)
-            .add("action", "start")
-            .add("host", host.trim())
-            .add("WAN_url", wanUrl)
+            .add("address", host.trim())
+            .add("WAN_url", targetWan)
+            .add("X_FH_WhoRequest", "web")
             .add("IPVersion", "1")
-            .add("MaxHopCount", "15")
-            .add("Timeout", "2000")
             .add("_", System.currentTimeMillis().toString())
             .build()
         client.newCall(Request.Builder().url("http://$ip/cgi-bin/ajax").post(startForm).build()).execute().close()
 
-        kotlinx.coroutines.delay(3000)
-
-        val sess2 = getFreshSessionId(ip)
-        val queryForm = FormBody.Builder()
-            .add("ajaxmethod", "get_traceroute_info")
-            .add("sessionid", sess2)
-            .add("_", System.currentTimeMillis().toString())
-            .build()
-
-        client.newCall(Request.Builder().url("http://$ip/cgi-bin/ajax").post(queryForm).build()).execute().use { resp ->
-            val body = resp.body?.string() ?: ""
-            val parsed = json.decodeFromString<TracerouteResultResponse>(body)
-            parsed.hops
+        var hops = emptyList<String>()
+        for (i in 1..6) {
+            kotlinx.coroutines.delay(2000)
+            try {
+                val body = executeGet(ip, user, pass, "get_traceroute_result")
+                val parsed = json.decodeFromString<TracerouteResultResponse>(body)
+                if (parsed.hops.isNotEmpty()) {
+                    hops = parsed.hops
+                }
+                if (parsed.diagnosticsState.equals("Complete", ignoreCase = true)) {
+                    break
+                }
+            } catch (_: Exception) {}
         }
+        hops
     }
 }

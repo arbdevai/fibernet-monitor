@@ -81,7 +81,7 @@ class ToolsViewModel(
         viewModelScope.launch {
             dbHelper.setCustomDeviceName(mac, alias)
             loadHistory()
-            _uiState.update { it.copy(successMessage = "Nama perangkat berhasil diperbarui.") }
+            _uiState.update { it.copy(successMessage = "Device alias updated successfully.") }
         }
     }
 
@@ -106,14 +106,14 @@ class ToolsViewModel(
                     it.copy(
                         isSpeedtesting = false,
                         speedtestFinalResult = finalResult,
-                        successMessage = "Uji kecepatan M-Lab selesai."
+                        successMessage = "M-Lab speedtest completed."
                     )
                 }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         isSpeedtesting = false,
-                        errorMessage = "Speedtest gagal: ${e.localizedMessage}"
+                        errorMessage = "Speedtest failed: ${e.localizedMessage ?: "Network error"}"
                     )
                 }
             }
@@ -141,7 +141,7 @@ class ToolsViewModel(
     fun runPing() {
         val host = _uiState.value.pingHostInput.trim()
         if (host.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Masukkan host atau IP untuk tes ping") }
+            _uiState.update { it.copy(errorMessage = "Please enter a valid host or IP for ping test.") }
             return
         }
 
@@ -161,7 +161,7 @@ class ToolsViewModel(
     fun runTraceroute() {
         val host = _uiState.value.traceHostInput.trim()
         if (host.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Masukkan host atau IP untuk traceroute") }
+            _uiState.update { it.copy(errorMessage = "Please enter a valid host or IP for traceroute.") }
             return
         }
 
