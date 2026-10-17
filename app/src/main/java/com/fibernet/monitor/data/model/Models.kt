@@ -143,6 +143,12 @@ data class BaseInfoResponse(
 
     val ponUploadedMb: Double
         get() = (ponBytesSent.toDoubleOrNull() ?: 0.0) / (1024.0 * 1024.0)
+
+    val ponDownloadedGb: Double
+        get() = (ponBytesReceived.toDoubleOrNull() ?: 0.0) / (1024.0 * 1024.0 * 1024.0)
+
+    val ponUploadedGb: Double
+        get() = (ponBytesSent.toDoubleOrNull() ?: 0.0) / (1024.0 * 1024.0 * 1024.0)
 }
 
 @Serializable

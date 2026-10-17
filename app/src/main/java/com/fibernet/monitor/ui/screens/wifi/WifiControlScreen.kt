@@ -18,6 +18,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fibernet.monitor.ui.components.WifiQrDialog
 import com.fibernet.monitor.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,6 +39,17 @@ fun WifiControlScreen(
             snackbarHostState.showSnackbar(it)
             viewModel.clearMessages()
         }
+    }
+
+    var qrShareTarget by remember { mutableStateOf<Triple<String, String, String>?>(null) }
+
+    qrShareTarget?.let { (ssid, password, band) ->
+        WifiQrDialog(
+            ssid = ssid,
+            password = password,
+            bandLabel = band,
+            onDismiss = { qrShareTarget = null }
+        )
     }
 
     // Dialog Edit SSID
@@ -164,7 +176,8 @@ fun WifiControlScreen(
                 bandColor = Band24GHz,
                 onEditSsid = { viewModel.showEditSsid(is5G = false) },
                 onEditPassword = { viewModel.showEditPassword(is5G = false) },
-                onSetPower = { viewModel.setTxPower(is5G = false, percentage = it) }
+                onSetPower = { viewModel.setTxPower(is5G = false, percentage = it) },
+                onShareQr = { qrShareTarget = Triple(state.config.ssid24, state.config.password24, "2.4 GHz") }
             )
 
             // Radio Card 5 GHz (Wi-Fi 6 AX)
@@ -179,7 +192,8 @@ fun WifiControlScreen(
                 bandColor = Band5GHz,
                 onEditSsid = { viewModel.showEditSsid(is5G = true) },
                 onEditPassword = { viewModel.showEditPassword(is5G = true) },
-                onSetPower = { viewModel.setTxPower(is5G = true, percentage = it) }
+                onSetPower = { viewModel.setTxPower(is5G = true, percentage = it) },
+                onShareQr = { qrShareTarget = Triple(state.config.ssid5G, state.config.password5G, "5 GHz") }
             )
 
             // WPS Quick Trigger Card
@@ -247,7 +261,8 @@ private fun WifiRadioCard(
     bandColor: Color,
     onEditSsid: () -> Unit,
     onEditPassword: () -> Unit,
-    onSetPower: (Int) -> Unit
+    onSetPower: (Int) -> Unit,
+    onShareQr: () -> Unit
 ) {
     var showPassword by remember { mutableStateOf(false) }
 
@@ -300,17 +315,43 @@ private fun WifiRadioCard(
                         )
                     }
                 }
-                Surface(
-                    color = SignalExcellent.copy(alpha = 0.15f),
-                    shape = RoundedCornerShape(8.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text(
-                        text = "Aktif",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = SignalExcellent,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
+                    OutlinedButton(
+                        onClick = onShareQr,
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.QrCode2,
+                            contentDescription = "QR Code",
+                            modifier = Modifier.size(16.dp),
+                            tint = bandColor
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "QR",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = bandColor,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Surface(
+                        color = SignalExcellent.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = "Aktif",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = SignalExcellent,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             }
 

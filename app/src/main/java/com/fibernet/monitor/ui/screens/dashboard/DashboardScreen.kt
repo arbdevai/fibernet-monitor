@@ -24,6 +24,7 @@ import com.fibernet.monitor.data.model.BaseInfoResponse
 import com.fibernet.monitor.data.model.WanItem
 import com.fibernet.monitor.data.repository.CombinedRouterStatus
 import com.fibernet.monitor.ui.components.DeviceCard
+import com.fibernet.monitor.ui.components.TrafficMonitorCard
 import com.fibernet.monitor.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -190,7 +191,18 @@ fun DashboardScreen(
                         )
                     }
 
-                    // 2. Kartu Status Optik GPON Real-Time
+                    // 2. Kartu Trafik Live & Akumulasi Kuota (GB)
+                    item {
+                        TrafficMonitorCard(
+                            downSpeedKbps = state.totalDownKbps,
+                            upSpeedKbps = state.totalUpKbps,
+                            downHistory = state.downloadSpeedHistory,
+                            upHistory = state.uploadSpeedHistory,
+                            baseInfo = state.routerStatus.baseInfo
+                        )
+                    }
+
+                    // 3. Kartu Status Optik GPON Real-Time
                     item {
                         OpticalStatusCard(baseInfo = state.routerStatus.baseInfo)
                     }

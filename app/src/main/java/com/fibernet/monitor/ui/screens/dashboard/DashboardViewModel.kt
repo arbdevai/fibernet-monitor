@@ -28,7 +28,9 @@ data class DashboardUiState(
     val errorMessage: String? = null,
     val successMessage: String? = null,
     val deviceToBlock: DeviceItem? = null,
-    val isActionInProgress: Boolean = false
+    val isActionInProgress: Boolean = false,
+    val downloadSpeedHistory: List<Float> = listOf(20f, 45f, 90f, 150f, 80f, 160f),
+    val uploadSpeedHistory: List<Float> = listOf(10f, 25f, 40f, 60f, 35f, 80f)
 ) {
     val filteredDevices: List<DeviceItem>
         get() = devices.filter { dev ->
@@ -91,11 +93,19 @@ class DashboardViewModel(
             val devicesRes = repository.getConnectedDevices()
 
             _uiState.update { state ->
+                val newDevices = devicesRes.getOrDefault(state.devices)
+                val newDown = newDevices.sumOf { it.downSpeedKbps }.toFloat()
+                val newUp = newDevices.sumOf { it.upSpeedKbps }.toFloat()
+                val updatedDownHistory = (state.downloadSpeedHistory + newDown).takeLast(25)
+                val updatedUpHistory = (state.uploadSpeedHistory + newUp).takeLast(25)
+
                 state.copy(
                     isLoading = false,
                     isRefreshing = false,
                     routerStatus = statusRes.getOrDefault(state.routerStatus),
-                    devices = devicesRes.getOrDefault(state.devices),
+                    devices = newDevices,
+                    downloadSpeedHistory = updatedDownHistory,
+                    uploadSpeedHistory = updatedUpHistory,
                     errorMessage = if (devicesRes.isFailure) devicesRes.exceptionOrNull()?.message else null
                 )
             }

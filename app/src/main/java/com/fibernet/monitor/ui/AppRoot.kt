@@ -34,10 +34,13 @@ fun AppRoot(
         RouterRepository(apiClient, preferences)
     }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val dbHelper = remember { com.fibernet.monitor.data.db.FiberNetDatabaseHelper.getInstance(context) }
+
     val dashboardViewModel = remember { DashboardViewModel(repository) }
     val securityViewModel = remember { SecurityViewModel(repository) }
     val wifiControlViewModel = remember { WifiControlViewModel(repository) }
-    val toolsViewModel = remember { ToolsViewModel(repository) }
+    val toolsViewModel = remember { ToolsViewModel(repository, dbHelper) }
     val settingsViewModel = remember { SettingsViewModel(repository) }
 
     var currentDestination by remember { mutableStateOf(NavDestination.DASHBOARD) }
