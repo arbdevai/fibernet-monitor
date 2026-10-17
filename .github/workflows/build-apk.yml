@@ -77,9 +77,10 @@ jobs:
       - name: Check for Release
         id: check_release
         run: |
-          if [[ "${{ github.event.head_commit.message }}" == Release\ v* ]]; then
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          TAG=$(echo "$COMMIT_MSG" | grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]\+' | head -n 1)
+          if [[ -n "$TAG" ]]; then
             echo "is_release=true" >> $GITHUB_OUTPUT
-            TAG=$(echo "${{ github.event.head_commit.message }}" | grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]\+' | head -n 1)
             echo "tag=$TAG" >> $GITHUB_OUTPUT
           else
             echo "is_release=false" >> $GITHUB_OUTPUT
