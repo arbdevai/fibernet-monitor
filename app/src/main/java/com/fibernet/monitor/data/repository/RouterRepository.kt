@@ -34,7 +34,9 @@ data class WifiFullConfig(
     val enabled5G: Boolean = true,
     val bssid5G: String = "",
     val channel5G: String = "",
-    val txPower5G: Int = 100
+    val txPower5G: Int = 100,
+    val allSsid24: List<WifiStatusItem> = emptyList(),
+    val allSsid5G: List<WifiStatusItem> = emptyList()
 )
 
 class RouterRepository(
@@ -230,11 +232,42 @@ class RouterRepository(
             enabled5G = active5g.enable == "1",
             bssid5G = active5g.bssid,
             channel5G = active5g.channelInUse.ifBlank { active5g.channel },
-            txPower5G = tx5g
+            txPower5G = tx5g,
+            allSsid24 = wifi2gList,
+            allSsid5G = wifi5gList
         )
         cachedWifi = config
         wifiCacheTime = now
         Result.success(config)
+    }
+
+    suspend fun saveSsidFull(
+        is5G: Boolean,
+        wifiIndex: Int,
+        ssid: String,
+        password: String,
+        enable: Boolean,
+        hideBroadcast: Boolean
+    ): Result<Boolean> {
+        val s = currentSettings()
+        cachedWifi = null
+        return apiClient.setWifiConfig(
+            ip = s.routerIp,
+            user = s.username,
+            pass = s.password,
+            is5G = is5G,
+            wifiIndex = wifiIndex,
+            ssid = ssid,
+            password = password,
+            enable = enable,
+            hideBroadcast = hideBroadcast
+        )
+    }
+
+    suspend fun setWifiChannel(is5G: Boolean, channel: Int): Result<Boolean> {
+        val s = currentSettings()
+        cachedWifi = null
+        return apiClient.setWifiChannel(s.routerIp, s.username, s.password, is5G, channel)
     }
 
     suspend fun updateSsid(is5G: Boolean, ssid: String, enabled: Boolean): Result<Boolean> {

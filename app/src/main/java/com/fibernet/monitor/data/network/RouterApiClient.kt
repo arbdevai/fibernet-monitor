@@ -364,6 +364,26 @@ class RouterApiClient {
         client.newCall(req).execute().use { resp -> resp.isSuccessful }
     }
 
+    suspend fun setWifiChannel(
+        ip: String,
+        user: String,
+        pass: String,
+        is5G: Boolean,
+        channel: Int
+    ): Result<Boolean> = safeApiCall {
+        ensureAuthenticated(ip, user, pass)
+        val freshSessionId = getFreshSessionId(ip)
+        val method = if (is5G) "setWlanControl_5G" else "setWlanControl"
+        val form = FormBody.Builder()
+            .add("ajaxmethod", method)
+            .add("sessionid", freshSessionId)
+            .add("Channel", channel.toString())
+            .add("_", System.currentTimeMillis().toString())
+            .build()
+        val req = Request.Builder().url("http://$ip/cgi-bin/ajax").post(form).build()
+        client.newCall(req).execute().use { resp -> resp.isSuccessful }
+    }
+
     suspend fun getMacFilterInfo(ip: String, user: String, pass: String): Result<MacFilterResponse> = safeApiCall {
         val body = executeGet(ip, user, pass, "get_ipv4_mac_filter_info")
         json.decodeFromString<MacFilterResponse>(body)
