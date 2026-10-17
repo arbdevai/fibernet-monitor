@@ -3,7 +3,9 @@ package com.fibernet.monitor.data.network
 import com.fibernet.monitor.data.crypto.RouterCrypto
 import com.fibernet.monitor.data.model.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -35,6 +37,7 @@ class RouterApiClient {
 
     // Bounded concurrency (maksimal 2 request simultan) agar CPU router embedded tidak drop/hang
     private val requestSemaphore = Semaphore(2)
+    private val authMutex = Mutex()
 
     @Volatile
     private var lastSessionId: String = ""
@@ -103,12 +106,7 @@ class RouterApiClient {
         }
     }
 
-    suspend fun login(ip: String, username: String, pass: String): Result<Boolean> = safeApiCall {
-        if (ip != activeRouterIp) {
-            resetSession()
-            activeRouterIp = ip
-        }
-
+    private fun executeLoginInternal(ip: String, username: String, pass: String): Boolean {
         // 1. Dapatkan acsRandom
         val acsUrl = "http://$ip/cgi-bin/ajax?ajaxmethod=get_acs_random"
         val acsReq = Request.Builder().url(acsUrl).get().build()
@@ -125,7 +123,16 @@ class RouterApiClient {
         val encryptedPass = RouterCrypto.encryptPassword(pass, aesKey)
 
         // 2. Dapatkan refresh session id
-        val sessId = getFreshSessionId(ip)
+        val sessUrl = "http://$ip/cgi-bin/ajax?ajaxmethod=get_refresh_sessionid"
+        val sessReq = Request.Builder().url(sessUrl).get().build()
+        val sessId = client.newCall(sessReq).execute().use { resp ->
+            if (!resp.isSuccessful) throw Exception("Failed to acquire session token (HTTP ${resp.code})")
+            val body = resp.body?.string() ?: ""
+            val jsonClean = extractJson(body)
+            val obj = json.parseToJsonElement(jsonClean).jsonObject
+            obj["sessionid"]?.jsonPrimitive?.content ?: ""
+        }
+        if (sessId.isNotBlank()) lastSessionId = sessId
 
         // 3. Kirim do_login
         val loginBody = FormBody.Builder()
@@ -142,7 +149,7 @@ class RouterApiClient {
             .post(loginBody)
             .build()
 
-        client.newCall(loginReq).execute().use { resp ->
+        return client.newCall(loginReq).execute().use { resp ->
             val body = resp.body?.string() ?: ""
             val jsonClean = extractJson(body)
             val obj = json.parseToJsonElement(jsonClean).jsonObject
@@ -159,14 +166,28 @@ class RouterApiClient {
         }
     }
 
-    private suspend fun ensureAuthenticated(ip: String, username: String, pass: String) {
-        if (ip != activeRouterIp) {
+    suspend fun login(ip: String, username: String, pass: String): Result<Boolean> = safeApiCall {
+        authMutex.withLock {
             resetSession()
             activeRouterIp = ip
+            executeLoginInternal(ip, username, pass)
         }
-        if (!isLoggedIn || currentAesKey.isBlank()) {
-            val res = login(ip, username, pass)
-            if (res.isFailure) throw res.exceptionOrNull() ?: Exception("Router authentication failed")
+    }
+
+    suspend fun ensureAuthenticated(ip: String, username: String, pass: String) {
+        if (isLoggedIn && ip == activeRouterIp && currentAesKey.isNotBlank()) {
+            return
+        }
+        authMutex.withLock {
+            if (isLoggedIn && ip == activeRouterIp && currentAesKey.isNotBlank()) {
+                return
+            }
+            if (ip != activeRouterIp) {
+                resetSession()
+                activeRouterIp = ip
+            }
+            val success = executeLoginInternal(ip, username, pass)
+            if (!success) throw Exception("Router authentication failed")
         }
     }
 
@@ -177,9 +198,12 @@ class RouterApiClient {
         var respBody = client.newCall(Request.Builder().url(url).get().build()).execute().use { it.body?.string() ?: "" }
 
         if (respBody.contains("\"session_valid\":0") || respBody.contains("\"session_valid\":\"0\"")) {
-            // Sesi kedaluwarsa atau router berganti, re-login transparan
-            resetSession()
-            ensureAuthenticated(ip, user, pass)
+            // Sesi kedaluwarsa atau router berganti, re-login sekali via authMutex
+            authMutex.withLock {
+                resetSession()
+                activeRouterIp = ip
+                executeLoginInternal(ip, user, pass)
+            }
             respBody = client.newCall(Request.Builder().url(url).get().build()).execute().use { it.body?.string() ?: "" }
         }
         return extractJson(respBody)

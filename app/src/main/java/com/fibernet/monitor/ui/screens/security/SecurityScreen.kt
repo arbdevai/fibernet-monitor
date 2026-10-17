@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fibernet.monitor.data.model.MacFilterRule
+import com.fibernet.monitor.ui.components.SecuritySkeleton
 import com.fibernet.monitor.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -175,11 +176,14 @@ fun SecurityScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
+            if (state.isLoading && state.filterInfo.filterList.isEmpty()) {
+                SecuritySkeleton()
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
                 // 1. Kartu Status Proteksi
                 item {
                     val isFilterEnabled = state.filterInfo.enable == "1"
@@ -295,6 +299,7 @@ fun SecurityScreen(
             }
         }
     }
+}
 }
 
 @Composable

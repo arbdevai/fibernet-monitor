@@ -6,6 +6,7 @@ import com.fibernet.monitor.data.model.DeviceItem
 import com.fibernet.monitor.data.repository.CombinedRouterStatus
 import com.fibernet.monitor.data.repository.RouterRepository
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -89,8 +90,10 @@ class DashboardViewModel(
             if (isInitial) _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             else _uiState.update { it.copy(isRefreshing = true) }
 
-            val statusRes = repository.getRouterStatus()
-            val devicesRes = repository.getConnectedDevices()
+            val statusDeferred = async { repository.getRouterStatus() }
+            val devicesDeferred = async { repository.getConnectedDevices() }
+            val statusRes = statusDeferred.await()
+            val devicesRes = devicesDeferred.await()
 
             _uiState.update { state ->
                 val newDevices = devicesRes.getOrDefault(state.devices)

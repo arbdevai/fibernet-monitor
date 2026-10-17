@@ -117,6 +117,18 @@ class RouterRepository(
 
         val s = currentSettings()
 
+        // Autentikasi sekali di awal secara berurutan agar 4 request paralel tidak saling tunggu / berebut sesi router
+        try {
+            apiClient.ensureAuthenticated(s.routerIp, s.username, s.password)
+        } catch (e: Exception) {
+            return@coroutineScope Result.success(
+                CombinedRouterStatus(
+                    isConnected = false,
+                    errorMessage = e.message ?: "Router authentication failed"
+                )
+            )
+        }
+
         // Panggilan paralel dibatasi Semaphore(2) di RouterApiClient agar router embedded tidak overload
         val baseDeferred = async { apiClient.getBaseInfo(s.routerIp, s.username, s.password) }
         val wanDeferred = async { apiClient.getAllWanInfo(s.routerIp, s.username, s.password) }

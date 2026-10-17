@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import com.fibernet.monitor.data.db.DisconnectionLog
 import com.fibernet.monitor.data.db.KnownDevice
 import com.fibernet.monitor.data.speedtest.SpeedtestPhase
+import com.fibernet.monitor.ui.components.SkeletonBox
 import com.fibernet.monitor.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -493,16 +494,29 @@ fun ToolsScreen(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.outline
                     )
-                    DetailRow(label = "Device Model", value = "FiberHome ${base.modelName.ifBlank { "HG6145F3" }}")
-                    DetailRow(label = "Serial Number (SN)", value = base.serialNumber.ifBlank { "FHTTC18477E7" })
-                    DetailRow(label = "GPON Serial", value = base.gponSn.ifBlank { "-" })
-                    DetailRow(label = "Firmware Version", value = base.softwareVersion.ifBlank { "RP3441" })
-                    DetailRow(label = "Hardware Version", value = base.hardwareVersion.ifBlank { "WKE2.094.476A01" })
-                    DetailRow(label = "Gateway MAC Address", value = base.bridgeMac.ifBlank { "D4:00:68:4E:9D:C8" })
-                    DetailRow(label = "WAN Access", value = "${base.wanAccessType} (${base.uptimeFormatted})")
-                    DetailRow(label = "PPPoE Connection", value = internetWan?.connectionStatus ?: "Connected")
-                    DetailRow(label = "WAN Public IP", value = internetWan?.externalIp ?: "-")
-                    DetailRow(label = "ISP Gateway", value = internetWan?.remoteIp ?: "-")
+                    if (state.isLoading && base.serialNumber.isBlank()) {
+                        repeat(6) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                SkeletonBox(modifier = Modifier.size(width = 130.dp, height = 14.dp))
+                                SkeletonBox(modifier = Modifier.size(width = 150.dp, height = 14.dp))
+                            }
+                        }
+                    } else {
+                        DetailRow(label = "Device Model", value = if (base.modelName.isNotBlank()) "FiberHome ${base.modelName}" else "-")
+                        DetailRow(label = "Serial Number (SN)", value = base.serialNumber.ifBlank { "-" })
+                        DetailRow(label = "GPON Serial", value = base.gponSn.ifBlank { "-" })
+                        DetailRow(label = "Firmware Version", value = base.softwareVersion.ifBlank { "-" })
+                        DetailRow(label = "Hardware Version", value = base.hardwareVersion.ifBlank { "-" })
+                        DetailRow(label = "Gateway MAC Address", value = base.bridgeMac.ifBlank { "-" })
+                        DetailRow(label = "WAN Access", value = if (base.wanAccessType.isNotBlank()) "${base.wanAccessType} (${base.uptimeFormatted})" else "-")
+                        DetailRow(label = "PPPoE Connection", value = internetWan?.connectionStatus ?: "-")
+                        DetailRow(label = "WAN Public IP", value = internetWan?.externalIp ?: "-")
+                        DetailRow(label = "ISP Gateway", value = internetWan?.remoteIp ?: "-")
+                    }
                 }
             }
         }

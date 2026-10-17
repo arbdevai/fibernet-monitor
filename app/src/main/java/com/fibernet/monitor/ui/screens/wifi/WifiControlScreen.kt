@@ -18,6 +18,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fibernet.monitor.ui.components.WifiControlSkeleton
 import com.fibernet.monitor.ui.components.WifiQrDialog
 import com.fibernet.monitor.ui.theme.*
 
@@ -156,92 +157,102 @@ fun WifiControlScreen(
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Radio Card 2.4 GHz
-            WifiRadioCard(
-                title = "Wi-Fi 2.4 GHz",
-                subtitle = "802.11 b/g/n • Long Range",
-                ssid = state.config.ssid24,
-                password = state.config.password24,
-                bssid = state.config.bssid24,
-                channel = state.config.channel24,
-                currentTxPower = state.config.txPower24,
-                bandColor = Band24GHz,
-                onEditSsid = { viewModel.showEditSsid(is5G = false) },
-                onEditPassword = { viewModel.showEditPassword(is5G = false) },
-                onSetPower = { viewModel.setTxPower(is5G = false, percentage = it) },
-                onShareQr = { qrShareTarget = Triple(state.config.ssid24, state.config.password24, "2.4 GHz") }
-            )
-
-            // Radio Card 5 GHz (Wi-Fi 6 AX)
-            WifiRadioCard(
-                title = "Wi-Fi 5 GHz (Wi-Fi 6)",
-                subtitle = "802.11ax • High-Speed AX3000",
-                ssid = state.config.ssid5G,
-                password = state.config.password5G,
-                bssid = state.config.bssid5G,
-                channel = state.config.channel5G,
-                currentTxPower = state.config.txPower5G,
-                bandColor = Band5GHz,
-                onEditSsid = { viewModel.showEditSsid(is5G = true) },
-                onEditPassword = { viewModel.showEditPassword(is5G = true) },
-                onSetPower = { viewModel.setTxPower(is5G = true, percentage = it) },
-                onShareQr = { qrShareTarget = Triple(state.config.ssid5G, state.config.password5G, "5 GHz") }
-            )
-
-            // WPS Quick Trigger Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        if (state.isLoading && state.config.ssid24.isBlank()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                WifiControlSkeleton()
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Radio Card 2.4 GHz
+                WifiRadioCard(
+                    title = "Wi-Fi 2.4 GHz",
+                    subtitle = "802.11 b/g/n • Long Range",
+                    ssid = state.config.ssid24,
+                    password = state.config.password24,
+                    bssid = state.config.bssid24,
+                    channel = state.config.channel24,
+                    currentTxPower = state.config.txPower24,
+                    bandColor = Band24GHz,
+                    onEditSsid = { viewModel.showEditSsid(is5G = false) },
+                    onEditPassword = { viewModel.showEditPassword(is5G = false) },
+                    onSetPower = { viewModel.setTxPower(is5G = false, percentage = it) },
+                    onShareQr = { qrShareTarget = Triple(state.config.ssid24, state.config.password24, "2.4 GHz") }
+                )
+
+                // Radio Card 5 GHz (Wi-Fi 6 AX)
+                WifiRadioCard(
+                    title = "Wi-Fi 5 GHz (Wi-Fi 6)",
+                    subtitle = "802.11ax • High-Speed AX3000",
+                    ssid = state.config.ssid5G,
+                    password = state.config.password5G,
+                    bssid = state.config.bssid5G,
+                    channel = state.config.channel5G,
+                    currentTxPower = state.config.txPower5G,
+                    bandColor = Band5GHz,
+                    onEditSsid = { viewModel.showEditSsid(is5G = true) },
+                    onEditPassword = { viewModel.showEditPassword(is5G = true) },
+                    onSetPower = { viewModel.setTxPower(is5G = true, percentage = it) },
+                    onShareQr = { qrShareTarget = Triple(state.config.ssid5G, state.config.password5G, "5 GHz") }
+                )
+
+                // WPS Quick Trigger Card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
-                    Box(
+                    Row(
                         modifier = Modifier
-                            .size(42.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(CrimsonPrimary.copy(alpha = 0.1f)),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.WifiProtectedSetup,
-                            contentDescription = null,
-                            tint = CrimsonPrimary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Wi-Fi Protected Setup (WPS)",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = "Connect client devices instantly without entering a password.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    }
-                    Button(
-                        onClick = { viewModel.triggerWps() },
-                        colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text("Start WPS")
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(CrimsonPrimary.copy(alpha = 0.1f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.WifiProtectedSetup,
+                                contentDescription = null,
+                                tint = CrimsonPrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Wi-Fi Protected Setup (WPS)",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Connect client devices instantly without entering a password.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                        Button(
+                            onClick = { viewModel.triggerWps() },
+                            colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Start WPS")
+                        }
                     }
                 }
             }

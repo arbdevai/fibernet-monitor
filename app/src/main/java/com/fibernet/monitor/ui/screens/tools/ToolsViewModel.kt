@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class ToolsUiState(
+    val isLoading: Boolean = false,
     val isActionInProgress: Boolean = false,
     val isPinging: Boolean = false,
     val pingHostInput: String = "8.8.8.8",
@@ -57,9 +58,13 @@ class ToolsViewModel(
 
     fun loadStatus() {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
             val res = repository.getRouterStatus()
-            if (res.isSuccess) {
-                _uiState.update { it.copy(routerStatus = res.getOrThrow()) }
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    routerStatus = res.getOrDefault(it.routerStatus)
+                )
             }
         }
     }

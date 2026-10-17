@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.fibernet.monitor.data.model.BaseInfoResponse
 import com.fibernet.monitor.data.model.WanItem
 import com.fibernet.monitor.data.repository.CombinedRouterStatus
+import com.fibernet.monitor.ui.components.DashboardSkeleton
 import com.fibernet.monitor.ui.components.DeviceCard
 import com.fibernet.monitor.ui.components.TrafficMonitorCard
 import com.fibernet.monitor.ui.theme.*
@@ -159,22 +160,7 @@ fun DashboardScreen(
                 .padding(paddingValues)
         ) {
             if (state.isLoading && state.devices.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        CircularProgressIndicator(color = CrimsonPrimary)
-                        Text(
-                            text = "Connecting to router...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    }
-                }
+                DashboardSkeleton()
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
