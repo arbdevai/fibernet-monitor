@@ -61,6 +61,15 @@ fun AppRoot(
         }
     }
 
+    // Cek update aplikasi secara otomatis di background saat dibuka
+    LaunchedEffect(Unit) {
+        settingsViewModel.checkForUpdates(context)
+    }
+
+    val settingsState by settingsViewModel.uiState.collectAsState()
+    val hasUpdate = settingsState.updateState is com.fibernet.monitor.data.model.UpdateDownloadState.Available ||
+                    settingsState.updateState is com.fibernet.monitor.data.model.UpdateDownloadState.ReadyToInstall
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
@@ -74,10 +83,18 @@ fun AppRoot(
                         selected = isSelected,
                         onClick = { currentDestination = destination },
                         icon = {
-                            Icon(
-                                imageVector = destination.icon,
-                                contentDescription = destination.title
-                            )
+                            BadgedBox(
+                                badge = {
+                                    if (destination == NavDestination.SETTINGS && hasUpdate) {
+                                        Badge(containerColor = CrimsonPrimary)
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = destination.icon,
+                                    contentDescription = destination.title
+                                )
+                            }
                         },
                         label = { Text(destination.title) },
                         colors = NavigationBarItemDefaults.colors(
