@@ -94,13 +94,13 @@ fun WifiQrDialog(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Bagikan Wi-Fi ($bandLabel)",
+                            text = "Share Wi-Fi ($bandLabel)",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                     }
                     IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Tutup")
+                        Icon(Icons.Rounded.Close, contentDescription = "Close")
                     }
                 }
 
@@ -117,7 +117,7 @@ fun WifiQrDialog(
                     qrBitmap?.let { bmp ->
                         Image(
                             bitmap = bmp.asImageBitmap(),
-                            contentDescription = "QR Code Wi-Fi",
+                            contentDescription = "Wi-Fi QR Code",
                             modifier = Modifier.fillMaxSize()
                         )
                     } ?: CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
@@ -132,7 +132,7 @@ fun WifiQrDialog(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Arahkan kamera HP ke kode QR di atas untuk langsung terhubung tanpa memasukkan kata sandi.",
+                    text = "Scan the QR code with your phone camera to connect directly without entering a password.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -150,14 +150,14 @@ fun WifiQrDialog(
                             val clipboard =
                                 context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             clipboard.setPrimaryClip(ClipData.newPlainText("Wi-Fi Password", password))
-                            Toast.makeText(context, "Kata sandi disalin ke clipboard", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Password copied to clipboard", Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Salin Sandi", style = MaterialTheme.typography.labelMedium)
+                        Text("Copy Password", style = MaterialTheme.typography.labelMedium)
                     }
 
                     Button(
@@ -169,7 +169,7 @@ fun WifiQrDialog(
                                     isSaving = false
                                     Toast.makeText(
                                         context,
-                                        if (success) "QR Code disimpan ke Galeri" else "Gagal menyimpan gambar",
+                                        if (success) "QR Code saved to Gallery" else "Failed to save image",
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
@@ -181,7 +181,7 @@ fun WifiQrDialog(
                     ) {
                         Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(if (isSaving) "Menyimpan..." else "Simpan QR", style = MaterialTheme.typography.labelMedium)
+                        Text(if (isSaving) "Saving..." else "Save QR Code", style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }

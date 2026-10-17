@@ -137,7 +137,7 @@ class DashboardViewModel(
                 _uiState.update {
                     it.copy(
                         isActionInProgress = false,
-                        successMessage = "Perangkat '${target.displayName}' berhasil diblokir."
+                        successMessage = "Device '${target.displayName}' blocked successfully."
                     )
                 }
                 loadData(isInitial = false)
@@ -145,7 +145,7 @@ class DashboardViewModel(
                 _uiState.update {
                     it.copy(
                         isActionInProgress = false,
-                        errorMessage = "Gagal memblokir: ${res.exceptionOrNull()?.message}"
+                        errorMessage = "Failed to block device: ${res.exceptionOrNull()?.message}"
                     )
                 }
             }

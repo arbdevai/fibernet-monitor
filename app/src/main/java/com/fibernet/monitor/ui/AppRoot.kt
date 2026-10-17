@@ -50,6 +50,17 @@ fun AppRoot(
         currentDestination = NavDestination.DASHBOARD
     }
 
+    // Auto-sync data layar saat berpindah tab (memanfaatkan cache 6s agar tidak membebani router)
+    LaunchedEffect(currentDestination) {
+        when (currentDestination) {
+            NavDestination.DASHBOARD -> dashboardViewModel.loadData(isInitial = false)
+            NavDestination.SECURITY -> securityViewModel.loadFilterList()
+            NavDestination.WIFI -> wifiControlViewModel.loadConfig()
+            NavDestination.TOOLS -> toolsViewModel.loadStatus()
+            NavDestination.SETTINGS -> {}
+        }
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         bottomBar = {

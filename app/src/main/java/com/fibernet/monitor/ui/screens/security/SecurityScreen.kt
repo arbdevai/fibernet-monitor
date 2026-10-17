@@ -44,7 +44,7 @@ fun SecurityScreen(
             onDismissRequest = { viewModel.dismissAddBlockDialog() },
             title = {
                 Text(
-                    text = "Tambah ke Daftar Blokir",
+                    text = "Add to Blocklist",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -55,7 +55,7 @@ fun SecurityScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Masukkan MAC address perangkat yang ingin diputus koneksinya dari Wi-Fi router.",
+                        text = "Enter the MAC address of the device to block from the router Wi-Fi.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -63,7 +63,7 @@ fun SecurityScreen(
                         value = state.inputMac,
                         onValueChange = { viewModel.onInputMacChanged(it) },
                         label = { Text("MAC Address") },
-                        placeholder = { Text("Contoh: 5C:66:6C:CD:55:69") },
+                        placeholder = { Text("e.g. 5C:66:6C:CD:55:69") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -74,8 +74,8 @@ fun SecurityScreen(
                     OutlinedTextField(
                         value = state.inputName,
                         onValueChange = { viewModel.onInputNameChanged(it) },
-                        label = { Text("Nama / Keterangan Perangkat") },
-                        placeholder = { Text("Contoh: HP Orang Asing") },
+                        label = { Text("Device Name / Note") },
+                        placeholder = { Text("e.g. Unknown Device") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -90,12 +90,12 @@ fun SecurityScreen(
                     onClick = { viewModel.submitManualBlock() },
                     colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary)
                 ) {
-                    Text("Blokir Perangkat")
+                    Text("Block Device")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.dismissAddBlockDialog() }) {
-                    Text("Batal")
+                    Text("Cancel")
                 }
             }
         )
@@ -107,14 +107,14 @@ fun SecurityScreen(
             onDismissRequest = { viewModel.dismissUnblockConfirmation() },
             title = {
                 Text(
-                    text = "Buka Blokir Perangkat?",
+                    text = "Unblock Device?",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
             },
             text = {
                 Text(
-                    text = "Perangkat '${target.name}' (${target.mac}) akan diizinkan kembali untuk terhubung ke jaringan Wi-Fi.",
+                    text = "Device '${target.name}' (${target.mac}) will be allowed to reconnect to the Wi-Fi network.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
@@ -123,12 +123,12 @@ fun SecurityScreen(
                     onClick = { viewModel.confirmUnblock() },
                     colors = ButtonDefaults.buttonColors(containerColor = SignalExcellent)
                 ) {
-                    Text("Buka Blokir")
+                    Text("Unblock")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.dismissUnblockConfirmation() }) {
-                    Text("Batal")
+                    Text("Cancel")
                 }
             }
         )
@@ -141,7 +141,7 @@ fun SecurityScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Kontrol Keamanan & Blokir",
+                        text = "MAC Filtering & Security",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -150,7 +150,7 @@ fun SecurityScreen(
                     IconButton(onClick = { viewModel.loadFilterList() }) {
                         Icon(
                             imageVector = Icons.Rounded.Refresh,
-                            contentDescription = "Segarkan",
+                            contentDescription = "Refresh",
                             tint = CrimsonPrimary
                         )
                     }
@@ -164,7 +164,7 @@ fun SecurityScreen(
             ExtendedFloatingActionButton(
                 onClick = { viewModel.showAddBlockDialog() },
                 icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
-                text = { Text("Tambah Blokir") },
+                text = { Text("Add Block Rule") },
                 containerColor = CrimsonPrimary,
                 contentColor = Color.White
             )
@@ -213,22 +213,22 @@ fun SecurityScreen(
                             }
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = if (isFilterEnabled) "Filter MAC: Aktif (Blacklist)" else "Filter MAC: Standar",
+                                    text = if (isFilterEnabled) "MAC Filter: Active (Blacklist)" else "MAC Filter: Disabled",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = if (isFilterEnabled) OnCrimsonContainerLight else MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = if (isFilterEnabled) "Perangkat di daftar hitam akan langsung diblokir router." else "Belum ada aturan blokir yang diberlakukan.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = if (isFilterEnabled) OnCrimsonContainerLight.copy(alpha = 0.8f) else MaterialTheme.colorScheme.outline
-                                )
+                                 )
+                                 Text(
+                                     text = if (isFilterEnabled) "Blacklisted devices are immediately blocked by router firewall." else "No active blocking rules applied.",
+                                     style = MaterialTheme.typography.bodySmall,
+                                     color = if (isFilterEnabled) OnCrimsonContainerLight.copy(alpha = 0.8f) else MaterialTheme.colorScheme.outline
+                                 )
                             }
                         }
                     }
                 }
 
-                // 2. Judul Section Daftar Perangkat Terblokir
+                // 2. Section Header: Blocked Devices
                 item {
                     Row(
                         modifier = Modifier
@@ -238,7 +238,7 @@ fun SecurityScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "DAFTAR PERANGKAT TERBLOKIR (${state.filterInfo.filterList.size})",
+                            text = "BLOCKED DEVICES (${state.filterInfo.filterList.size})",
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.outline
@@ -246,7 +246,7 @@ fun SecurityScreen(
                     }
                 }
 
-                // 3. List Item Terblokir
+                // 3. Blocked List Items
                 val list = state.filterInfo.filterList
                 if (list.isEmpty()) {
                     item {
@@ -271,13 +271,13 @@ fun SecurityScreen(
                                     modifier = Modifier.size(44.dp)
                                 )
                                 Text(
-                                    text = "Daftar Blokir Bersih",
+                                    text = "No Blocked Devices",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "Tidak ada perangkat yang sedang diblokir saat ini.",
+                                    text = "All network devices have normal access.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.outline
                                 )
@@ -331,7 +331,7 @@ private fun BlockedRuleCard(
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = rule.name.ifBlank { "Perangkat Blokir" },
+                    text = rule.name.ifBlank { "Blocked Device" },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -347,7 +347,7 @@ private fun BlockedRuleCard(
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = SignalExcellent)
             ) {
-                Text("Buka Blokir", style = MaterialTheme.typography.labelSmall)
+                Text("Unblock", style = MaterialTheme.typography.labelSmall)
             }
         }
     }

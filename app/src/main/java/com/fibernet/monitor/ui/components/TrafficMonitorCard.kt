@@ -74,12 +74,12 @@ fun TrafficMonitorCard(
                     }
                     Column {
                         Text(
-                            text = "Trafik & Akumulasi Kuota (Live)",
+                            text = "Live Traffic & Data Usage",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Aktivitas Bandwidth GPON & Riwayat Data",
+                            text = "GPON Bandwidth Activity",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -90,7 +90,7 @@ fun TrafficMonitorCard(
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = "Real-time",
+                        text = "Live",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = SignalExcellent,
@@ -105,14 +105,14 @@ fun TrafficMonitorCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 SpeedBadge(
-                    label = "KECEPATAN UNDUH",
+                    label = "DOWNLOAD",
                     speedKbps = downSpeedKbps,
                     color = SignalExcellent,
                     icon = Icons.Rounded.ArrowDownward,
                     modifier = Modifier.weight(1f)
                 )
                 SpeedBadge(
-                    label = "KECEPATAN UNGGAH",
+                    label = "UPLOAD",
                     speedKbps = upSpeedKbps,
                     color = CrimsonPrimary,
                     icon = Icons.Rounded.ArrowUpward,
@@ -138,7 +138,7 @@ fun TrafficMonitorCard(
 
             Divider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
 
-            // Total Riwayat Kuota dalam GB (Ramah Orang Awam)
+            // Total Riwayat Kuota dalam GB
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -152,7 +152,7 @@ fun TrafficMonitorCard(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Total Riwayat Penggunaan Data (Bulan Ini)",
+                        text = "Accumulated Data Transfer (Uptime)",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -163,19 +163,19 @@ fun TrafficMonitorCard(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     QuotaBox(
-                        title = "Total Unduhan",
+                        title = "Downloaded",
                         gbValue = baseInfo.ponDownloadedGb,
                         color = SignalExcellent,
                         modifier = Modifier.weight(1f)
                     )
                     QuotaBox(
-                        title = "Total Unggahan",
+                        title = "Uploaded",
                         gbValue = baseInfo.ponUploadedGb,
                         color = CrimsonPrimary,
                         modifier = Modifier.weight(1f)
                     )
                     QuotaBox(
-                        title = "Total Kuota",
+                        title = "Total Data",
                         gbValue = baseInfo.ponDownloadedGb + baseInfo.ponUploadedGb,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.weight(1f)

@@ -57,12 +57,12 @@ fun WifiControlScreen(
         val freqLabel = if (state.editingIs5G) "5 GHz" else "2.4 GHz"
         AlertDialog(
             onDismissRequest = { viewModel.dismissEditSsid() },
-            title = { Text("Ubah Nama Wi-Fi ($freqLabel)", fontWeight = FontWeight.Bold) },
+            title = { Text("Change Wi-Fi Name ($freqLabel)", fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = state.inputSsid,
                     onValueChange = { viewModel.onInputSsidChanged(it) },
-                    label = { Text("Nama Wi-Fi (SSID)") },
+                    label = { Text("Wi-Fi Name (SSID)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -76,11 +76,11 @@ fun WifiControlScreen(
                     onClick = { viewModel.saveSsid() },
                     colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary)
                 ) {
-                    Text("Simpan ke Router")
+                    Text("Save to Router")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.dismissEditSsid() }) { Text("Batal") }
+                TextButton(onClick = { viewModel.dismissEditSsid() }) { Text("Cancel") }
             }
         )
     }
@@ -92,12 +92,12 @@ fun WifiControlScreen(
 
         AlertDialog(
             onDismissRequest = { viewModel.dismissEditPassword() },
-            title = { Text("Ubah Password Wi-Fi ($freqLabel)", fontWeight = FontWeight.Bold) },
+            title = { Text("Change Wi-Fi Password ($freqLabel)", fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = state.inputPassword,
                     onValueChange = { viewModel.onInputPasswordChanged(it) },
-                    label = { Text("Kata Sandi Baru (Min. 8 karakter)") },
+                    label = { Text("New Password (Min. 8 characters)") },
                     singleLine = true,
                     visualTransformation = if (showPasswordText) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
@@ -120,11 +120,11 @@ fun WifiControlScreen(
                     onClick = { viewModel.savePassword() },
                     colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary)
                 ) {
-                    Text("Perbarui Password")
+                    Text("Update Password")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.dismissEditPassword() }) { Text("Batal") }
+                TextButton(onClick = { viewModel.dismissEditPassword() }) { Text("Cancel") }
             }
         )
     }
@@ -136,7 +136,7 @@ fun WifiControlScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Manajemen & Kontrol Wi-Fi",
+                        text = "Wi-Fi Settings",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -145,7 +145,7 @@ fun WifiControlScreen(
                     IconButton(onClick = { viewModel.loadConfig() }) {
                         Icon(
                             imageVector = Icons.Rounded.Refresh,
-                            contentDescription = "Segarkan",
+                            contentDescription = "Refresh",
                             tint = CrimsonPrimary
                         )
                     }
@@ -167,7 +167,7 @@ fun WifiControlScreen(
             // Radio Card 2.4 GHz
             WifiRadioCard(
                 title = "Wi-Fi 2.4 GHz",
-                subtitle = "Standar 802.11 b/g/n • Jangkauan Luas",
+                subtitle = "802.11 b/g/n • Long Range",
                 ssid = state.config.ssid24,
                 password = state.config.password24,
                 bssid = state.config.bssid24,
@@ -183,7 +183,7 @@ fun WifiControlScreen(
             // Radio Card 5 GHz (Wi-Fi 6 AX)
             WifiRadioCard(
                 title = "Wi-Fi 5 GHz (Wi-Fi 6)",
-                subtitle = "Standar 802.11ax • Kecepatan Tinggi AX3000",
+                subtitle = "802.11ax • High-Speed AX3000",
                 ssid = state.config.ssid5G,
                 password = state.config.password5G,
                 bssid = state.config.bssid5G,
@@ -231,7 +231,7 @@ fun WifiControlScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "Sambungkan perangkat klien instan tanpa perlu ketik sandi.",
+                            text = "Connect client devices instantly without entering a password.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -241,7 +241,7 @@ fun WifiControlScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("Mulai WPS")
+                        Text("Start WPS")
                     }
                 }
             }
@@ -345,7 +345,7 @@ private fun WifiRadioCard(
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Text(
-                            text = "Aktif",
+                            text = "Active",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = SignalExcellent,
@@ -355,7 +355,7 @@ private fun WifiRadioCard(
                 }
             }
 
-            // Info Tambahan: BSSID & Saluran
+            // Radio Info: BSSID & Channel
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -366,7 +366,7 @@ private fun WifiRadioCard(
                     color = MaterialTheme.colorScheme.outline
                 )
                 Text(
-                    text = "Saluran: ${if (channel.isNotBlank() && channel != "0") channel else "Auto (149)"}",
+                    text = "Channel: ${if (channel.isNotBlank() && channel != "0") channel else "Auto (149)"}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline
                 )
@@ -374,7 +374,7 @@ private fun WifiRadioCard(
 
             Divider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
 
-            // Nama Wi-Fi (SSID)
+            // Wi-Fi Name (SSID)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -382,22 +382,22 @@ private fun WifiRadioCard(
             ) {
                 Column {
                     Text(
-                        text = "NAMA WI-FI (SSID)",
+                        text = "WI-FI NAME (SSID)",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline
                     )
                     Text(
-                        text = ssid.ifBlank { "Memuat dari router..." },
+                        text = ssid.ifBlank { "Loading from router..." },
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
                 TextButton(onClick = onEditSsid) {
-                    Text("Ganti Nama", color = CrimsonPrimary)
+                    Text("Rename", color = CrimsonPrimary)
                 }
             }
 
-            // Kata Sandi
+            // Password
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -405,7 +405,7 @@ private fun WifiRadioCard(
             ) {
                 Column {
                     Text(
-                        text = "KATA SANDI",
+                        text = "PASSWORD",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -424,24 +424,24 @@ private fun WifiRadioCard(
                         )
                     }
                     TextButton(onClick = onEditPassword) {
-                        Text("Ubah Sandi", color = CrimsonPrimary)
+                        Text("Change", color = CrimsonPrimary)
                     }
                 }
             }
 
-            // Daya Transmisi (Tx Power)
+            // Transmit Power (Tx Power)
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "DAYA TRANSMISI (TX POWER)",
+                        text = "TRANSMIT POWER (TX POWER)",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline
                     )
                     Text(
-                        text = "Saat ini: $currentTxPower%",
+                        text = "Current: $currentTxPower%",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = bandColor

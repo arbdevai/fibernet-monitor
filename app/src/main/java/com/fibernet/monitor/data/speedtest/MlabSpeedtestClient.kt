@@ -60,17 +60,17 @@ class MlabSpeedtestClient(
 
         val locateResponseStr = try {
             okHttpClient.newCall(locatorRequest).execute().use { resp ->
-                if (!resp.isSuccessful) throw Exception("Gagal mencari server M-Lab: HTTP ${resp.code}")
-                resp.body?.string() ?: throw Exception("Respons server M-Lab kosong")
+                if (!resp.isSuccessful) throw Exception("Failed to locate M-Lab server: HTTP ${resp.code}")
+                resp.body?.string() ?: throw Exception("Empty response from M-Lab locator")
             }
         } catch (e: Exception) {
-            throw Exception("Tidak dapat terhubung ke jaringan M-Lab: ${e.localizedMessage}")
+            throw Exception("Unable to connect to M-Lab network: ${e.localizedMessage}")
         }
 
         val jsonObject = jsonParser.parseToJsonElement(locateResponseStr).jsonObject
         val resultsArray = jsonObject["results"]?.jsonArray
         if (resultsArray.isNullOrEmpty()) {
-            throw Exception("Server M-Lab terdekat tidak tersedia.")
+            throw Exception("No nearest M-Lab server available.")
         }
 
         val firstResult = resultsArray[0].jsonObject

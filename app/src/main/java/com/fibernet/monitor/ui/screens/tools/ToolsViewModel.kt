@@ -194,14 +194,14 @@ class ToolsViewModel(
                 _uiState.update {
                     it.copy(
                         isRebooting = false,
-                        successMessage = "Perintah reboot berhasil dikirim ke router. Perangkat akan restart dalam 60 detik."
+                        successMessage = "Reboot command sent to router. The system will restart shortly."
                     )
                 }
             } else {
                 _uiState.update {
                     it.copy(
                         isRebooting = false,
-                        errorMessage = "Gagal me-reboot: ${res.exceptionOrNull()?.message}"
+                        errorMessage = "Failed to reboot: ${res.exceptionOrNull()?.message}"
                     )
                 }
             }

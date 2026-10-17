@@ -22,7 +22,7 @@ data class DeviceItem(
         get() = ipAddressRaw.replace("_point_", ".")
 
     val displayName: String
-        get() = if (hostName.isNotBlank() && hostName != "null") hostName else "Perangkat ($macAddress)"
+        get() = if (hostName.isNotBlank() && hostName != "null") hostName else "Device ($macAddress)"
 
     val isOnline: Boolean
         get() = active == "1"

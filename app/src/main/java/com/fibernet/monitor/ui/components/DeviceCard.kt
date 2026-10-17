@@ -109,14 +109,14 @@ fun DeviceCard(
                                 .background(if (device.isOnline) SignalExcellent else MaterialTheme.colorScheme.outline)
                         )
                         Text(
-                            text = if (device.isOnline) "Aktif" else "Offline",
+                            text = if (device.isOnline) "Online" else "Offline",
                             style = MaterialTheme.typography.labelSmall,
                             color = if (device.isOnline) SignalExcellent else MaterialTheme.colorScheme.outline
                         )
                     }
                 }
 
-                // Badge Frekuensi
+                // Band Badge
                 Surface(
                     color = bandColor.copy(alpha = 0.14f),
                     shape = RoundedCornerShape(8.dp)
@@ -133,7 +133,7 @@ fun DeviceCard(
 
             Divider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
 
-            // Baris 2: IP Address, MAC Address (klik untuk copy)
+            // Row 2: IP Address, MAC Address (click to copy)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -144,7 +144,7 @@ fun DeviceCard(
                         .clickable {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             clipboard.setPrimaryClip(ClipData.newPlainText("IP", device.ipAddress))
-                            Toast.makeText(context, "IP ${device.ipAddress} disalin", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "IP copied: ${device.ipAddress}", Toast.LENGTH_SHORT).show()
                         }
                 ) {
                     Text(
@@ -166,7 +166,7 @@ fun DeviceCard(
                         .clickable {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             clipboard.setPrimaryClip(ClipData.newPlainText("MAC", device.macAddress))
-                            Toast.makeText(context, "MAC ${device.macAddress} disalin", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "MAC copied: ${device.macAddress}", Toast.LENGTH_SHORT).show()
                         }
                 ) {
                     Text(
@@ -231,7 +231,7 @@ fun DeviceCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "Blokir",
+                        text = "Block",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold
                     )

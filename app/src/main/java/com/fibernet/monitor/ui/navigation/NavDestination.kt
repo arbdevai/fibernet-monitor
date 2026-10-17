@@ -8,9 +8,9 @@ enum class NavDestination(
     val title: String,
     val icon: ImageVector
 ) {
-    DASHBOARD("Beranda", Icons.Rounded.Wifi),
-    SECURITY("Blokir", Icons.Rounded.Security),
-    WIFI("WiFi", Icons.Rounded.SettingsInputAntenna),
-    TOOLS("Alat", Icons.Rounded.Build),
-    SETTINGS("Setelan", Icons.Rounded.Tune)
+    DASHBOARD("Dashboard", Icons.Rounded.Wifi),
+    SECURITY("Security", Icons.Rounded.Security),
+    WIFI("Wi-Fi", Icons.Rounded.SettingsInputAntenna),
+    TOOLS("Tools", Icons.Rounded.Build),
+    SETTINGS("Settings", Icons.Rounded.Tune)
 }

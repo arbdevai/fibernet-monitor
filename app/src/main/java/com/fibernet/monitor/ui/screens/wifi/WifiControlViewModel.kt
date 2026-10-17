@@ -87,7 +87,7 @@ class WifiControlViewModel(
                 _uiState.update {
                     it.copy(
                         isActionInProgress = false,
-                        successMessage = "Nama Wi-Fi (${if (is5G) "5 GHz" else "2.4 GHz"}) berhasil diperbarui."
+                        successMessage = "Wi-Fi SSID (${if (is5G) "5 GHz" else "2.4 GHz"}) updated successfully."
                     )
                 }
                 loadConfig()
@@ -95,7 +95,7 @@ class WifiControlViewModel(
                 _uiState.update {
                     it.copy(
                         isActionInProgress = false,
-                        errorMessage = "Gagal memperbarui SSID: ${res.exceptionOrNull()?.message}"
+                        errorMessage = "Failed to update SSID: ${res.exceptionOrNull()?.message}"
                     )
                 }
             }
@@ -125,7 +125,7 @@ class WifiControlViewModel(
         val is5G = _uiState.value.editingIs5G
         val newPass = _uiState.value.inputPassword
         if (newPass.length < 8) {
-            _uiState.update { it.copy(errorMessage = "Kata sandi Wi-Fi minimal 8 karakter") }
+            _uiState.update { it.copy(errorMessage = "Wi-Fi password must be at least 8 characters.") }
             return
         }
 
@@ -136,7 +136,7 @@ class WifiControlViewModel(
                 _uiState.update {
                     it.copy(
                         isActionInProgress = false,
-                        successMessage = "Kata sandi Wi-Fi (${if (is5G) "5 GHz" else "2.4 GHz"}) berhasil diubah."
+                        successMessage = "Wi-Fi password (${if (is5G) "5 GHz" else "2.4 GHz"}) updated successfully."
                     )
                 }
                 loadConfig()
@@ -144,7 +144,7 @@ class WifiControlViewModel(
                 _uiState.update {
                     it.copy(
                         isActionInProgress = false,
-                        errorMessage = "Gagal mengubah password: ${res.exceptionOrNull()?.message}"
+                        errorMessage = "Failed to update password: ${res.exceptionOrNull()?.message}"
                     )
                 }
             }
@@ -158,8 +158,8 @@ class WifiControlViewModel(
             _uiState.update {
                 it.copy(
                     isActionInProgress = false,
-                    successMessage = if (res.isSuccess) "Daya transmisi diatur ke $percentage%" else null,
-                    errorMessage = if (res.isFailure) "Gagal mengatur daya: ${res.exceptionOrNull()?.message}" else null
+                    successMessage = if (res.isSuccess) "Transmit power set to $percentage%" else null,
+                    errorMessage = if (res.isFailure) "Failed to set transmit power: ${res.exceptionOrNull()?.message}" else null
                 )
             }
         }
@@ -173,8 +173,8 @@ class WifiControlViewModel(
                 it.copy(
                     isActionInProgress = false,
                     wpsActive = res.isSuccess,
-                    successMessage = if (res.isSuccess) "Mode WPS aktif selama 2 menit. Silakan tekan tombol WPS pada perangkat klien." else null,
-                    errorMessage = if (res.isFailure) "Gagal memicu WPS: ${res.exceptionOrNull()?.message}" else null
+                    successMessage = if (res.isSuccess) "WPS active for 2 minutes. Press the WPS button on your client device." else null,
+                    errorMessage = if (res.isFailure) "Failed to trigger WPS: ${res.exceptionOrNull()?.message}" else null
                 )
             }
         }

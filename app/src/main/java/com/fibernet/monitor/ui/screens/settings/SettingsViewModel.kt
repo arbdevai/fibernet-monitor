@@ -63,8 +63,8 @@ class SettingsViewModel(
             _uiState.update {
                 it.copy(
                     isTesting = false,
-                    connectionTestResult = if (res.isSuccess) "Koneksi Berhasil! Kredensial router cocok." else null,
-                    errorMessage = if (res.isFailure) "Koneksi Gagal: ${res.exceptionOrNull()?.message}" else null
+                    connectionTestResult = if (res.isSuccess) "Connection successful! Router credentials verified." else null,
+                    errorMessage = if (res.isFailure) "Connection failed: ${res.exceptionOrNull()?.message}" else null
                 )
             }
         }
@@ -82,7 +82,7 @@ class SettingsViewModel(
                 notify = s.notifyNewDevice
             )
             _uiState.update {
-                it.copy(isSaving = false, successMessage = "Pengaturan berhasil disimpan.")
+                it.copy(isSaving = false, successMessage = "Settings saved successfully.")
             }
         }
     }

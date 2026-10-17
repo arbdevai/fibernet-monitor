@@ -48,7 +48,7 @@ fun SettingsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Pengaturan Router",
+                        text = "Router Settings",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -80,7 +80,7 @@ fun SettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Text(
-                        text = "KREDENSIAL LOGIN ROUTER",
+                        text = "ROUTER CREDENTIALS",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.outline
@@ -89,7 +89,7 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = state.routerIp,
                         onValueChange = { viewModel.onIpChanged(it) },
-                        label = { Text("Alamat IP Router") },
+                        label = { Text("Gateway IP Address") },
                         placeholder = { Text("192.168.1.1") },
                         singleLine = true,
                         leadingIcon = { Icon(Icons.Rounded.Router, contentDescription = null) },
@@ -103,7 +103,7 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = state.username,
                         onValueChange = { viewModel.onUserChanged(it) },
-                        label = { Text("Username Router") },
+                        label = { Text("Username") },
                         placeholder = { Text("admin") },
                         singleLine = true,
                         leadingIcon = { Icon(Icons.Rounded.Person, contentDescription = null) },
@@ -117,7 +117,7 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = state.password,
                         onValueChange = { viewModel.onPassChanged(it) },
-                        label = { Text("Password Router") },
+                        label = { Text("Password") },
                         singleLine = true,
                         visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                         leadingIcon = { Icon(Icons.Rounded.Key, contentDescription = null) },
@@ -139,7 +139,7 @@ fun SettingsScreen(
                     // Interval Refresh
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "INTERVAL PENYEGARAN OTOMATIS",
+                            text = "AUTO-REFRESH INTERVAL",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -148,9 +148,9 @@ fun SettingsScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             listOf(
-                                5 to "5 dtk",
-                                10 to "10 dtk",
-                                30 to "30 dtk",
+                                5 to "5s",
+                                10 to "10s",
+                                30 to "30s",
                                 0 to "Manual"
                             ).forEach { (sec, label) ->
                                 val isSelected = state.refreshIntervalSeconds == sec
@@ -185,7 +185,7 @@ fun SettingsScreen(
                                     strokeWidth = 2.dp
                                 )
                             } else {
-                                Text("Uji Koneksi")
+                                Text("Test Connection")
                             }
                         }
 
@@ -196,13 +196,13 @@ fun SettingsScreen(
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Simpan")
+                            Text("Save Settings")
                         }
                     }
                 }
             }
 
-            // Panduan & Info Router
+            // Connection Guide Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(18.dp),
@@ -223,13 +223,13 @@ fun SettingsScreen(
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
-                            text = "Petunjuk Penggunaan",
+                            text = "Connection Guide",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                     }
                     Text(
-                        text = "1. Pastikan smartphone Anda telah terhubung ke jaringan Wi-Fi rumah yang dipancarkan oleh router FiberHome.\n2. Alamat default gateway FiberHome adalah 192.168.1.1.\n3. Fitur blokir akan mendaftarkan MAC Address target ke blacklist firewall router.",
+                        text = "1. Connect your smartphone to the FiberHome router Wi-Fi network.\n2. The default FiberHome gateway IP is 192.168.1.1.\n3. The block feature registers target MAC addresses directly to the router hardware firewall blacklist.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

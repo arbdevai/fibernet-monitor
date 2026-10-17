@@ -48,11 +48,11 @@ fun ToolsScreen(
         }
     }
 
-    // Modal Edit Nama Panggilan Perangkat
+    // Modal Edit Device Alias
     deviceToRename?.let { dev ->
         AlertDialog(
             onDismissRequest = { deviceToRename = null },
-            title = { Text("Beri Nama Perangkat", fontWeight = FontWeight.Bold) },
+            title = { Text("Set Device Name", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
@@ -63,7 +63,7 @@ fun ToolsScreen(
                     OutlinedTextField(
                         value = newDeviceAliasInput,
                         onValueChange = { newDeviceAliasInput = it },
-                        label = { Text("Nama Panggilan (cth: HP Ayah, Laptop Kantor)") },
+                        label = { Text("Device Alias (e.g. Living Room TV, Work Laptop)") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -77,16 +77,16 @@ fun ToolsScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary)
                 ) {
-                    Text("Simpan Nama")
+                    Text("Save Name")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { deviceToRename = null }) { Text("Batal") }
+                TextButton(onClick = { deviceToRename = null }) { Text("Cancel") }
             }
         )
     }
 
-    // Modal Konfirmasi Reboot
+    // Modal Reboot Confirmation
     if (state.showRebootDialog) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissRebootConfirmation() },
@@ -100,14 +100,14 @@ fun ToolsScreen(
             },
             title = {
                 Text(
-                    text = "Reboot Router FiberHome?",
+                    text = "Reboot FiberHome Router?",
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleLarge
                 )
             },
             text = {
                 Text(
-                    text = "Router akan memutus koneksi Wi-Fi dan internet selama 1 hingga 2 menit untuk proses restart sistem. Pastikan tidak ada aktivitas unduhan penting yang sedang berjalan.",
+                    text = "The router will restart system services and Wi-Fi connections for 1 to 2 minutes. Please ensure no critical downloads are in progress.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
@@ -116,12 +116,12 @@ fun ToolsScreen(
                     onClick = { viewModel.confirmReboot() },
                     colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary)
                 ) {
-                    Text("Ya, Mulai Reboot")
+                    Text("Reboot Now")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.dismissRebootConfirmation() }) {
-                    Text("Batal")
+                    Text("Cancel")
                 }
             }
         )
@@ -134,7 +134,7 @@ fun ToolsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Alat Diagnostik & Pemeliharaan",
+                        text = "Diagnostics & Tools",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -146,7 +146,7 @@ fun ToolsScreen(
                     }) {
                         Icon(
                             imageVector = Icons.Rounded.Refresh,
-                            contentDescription = "Segarkan",
+                            contentDescription = "Refresh",
                             tint = CrimsonPrimary
                         )
                     }
@@ -218,12 +218,12 @@ fun ToolsScreen(
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Mulai Ulang (Reboot) Router",
+                                text = "Reboot Router",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Restart sistem router dari jarak jauh untuk membersihkan memori dan memulihkan koneksi.",
+                                text = "Remotely restart router system to clear cache and refresh connections.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.outline
                             )
@@ -244,17 +244,17 @@ fun ToolsScreen(
                                 strokeWidth = 2.dp
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Mengirim Perintah Reboot...")
+                            Text("Sending Reboot Command...")
                         } else {
                             Icon(Icons.Rounded.RestartAlt, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Reboot Router Sekarang")
+                            Text("Reboot Router Now")
                         }
                     }
                 }
             }
 
-            // 4. Diagnostik Ping Live
+            // 4. Ping Live Diagnostics
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(18.dp),
@@ -288,12 +288,12 @@ fun ToolsScreen(
                         }
                         Column {
                             Text(
-                                text = "Uji Ping Router ke Internet",
+                                text = "Ping Diagnostic",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Mengukur latensi ICMP langsung dari WAN FiberHome.",
+                                text = "Measure ICMP latency directly from FiberHome WAN interface.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.outline
                             )
@@ -308,7 +308,7 @@ fun ToolsScreen(
                         OutlinedTextField(
                             value = state.pingHostInput,
                             onValueChange = { viewModel.onPingHostChanged(it) },
-                            label = { Text("Host / IP Tujuan") },
+                            label = { Text("Target Host / IP") },
                             singleLine = true,
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp)
@@ -326,12 +326,12 @@ fun ToolsScreen(
                                     strokeWidth = 2.dp
                                 )
                             } else {
-                                Text("Tes Ping")
+                                Text("Run Ping")
                             }
                         }
                     }
 
-                    // Hasil Ping
+                    // Ping Results
                     state.pingResult?.let { res ->
                         Surface(
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
@@ -343,18 +343,18 @@ fun ToolsScreen(
                                 verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Text(
-                                    text = "HASIL PING FIBERHOME",
+                                    text = "FIBERHOME PING RESULT",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.outline
                                 )
                                 Text(
-                                    text = "Status: ${if (res.isComplete) "Selesai" else res.diagnosticsState} • Berhasil: ${res.successCount} • Gagal: ${res.failureCount}",
+                                    text = "Status: ${if (res.isComplete) "Complete" else res.diagnosticsState} • Success: ${res.successCount} • Failed: ${res.failureCount}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    text = "Latensi: Min ${res.minResponseTime} ms | Avg ${res.avgResponseTime} ms | Max ${res.maxResponseTime} ms",
+                                    text = "Latency: Min ${res.minResponseTime} ms | Avg ${res.avgResponseTime} ms | Max ${res.maxResponseTime} ms",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = SignalExcellent
@@ -365,7 +365,7 @@ fun ToolsScreen(
                 }
             }
 
-            // 5. Diagnostik Traceroute Live
+            // 5. Traceroute Diagnostics
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(18.dp),
@@ -399,12 +399,12 @@ fun ToolsScreen(
                         }
                         Column {
                             Text(
-                                text = "Traceroute Jalur Jaringan",
+                                text = "Traceroute",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Menelusuri setiap hop routing dari router ke server tujuan.",
+                                text = "Trace network routing hops from router to destination host.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.outline
                             )
@@ -419,7 +419,7 @@ fun ToolsScreen(
                         OutlinedTextField(
                             value = state.traceHostInput,
                             onValueChange = { viewModel.onTraceHostChanged(it) },
-                            label = { Text("Host / IP Traceroute") },
+                            label = { Text("Target Host / IP") },
                             singleLine = true,
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp)
@@ -437,12 +437,12 @@ fun ToolsScreen(
                                     strokeWidth = 2.dp
                                 )
                             } else {
-                                Text("Lacak")
+                                Text("Trace")
                             }
                         }
                     }
 
-                    // Hasil Traceroute
+                    // Traceroute Results
                     if (state.traceResults.isNotEmpty()) {
                         Surface(
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
@@ -454,7 +454,7 @@ fun ToolsScreen(
                                 verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Text(
-                                    text = "HASIL TRACEROUTE (${state.traceResults.size} HOP)",
+                                    text = "TRACEROUTE RESULT (${state.traceResults.size} HOPS)",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.outline
@@ -472,7 +472,7 @@ fun ToolsScreen(
                 }
             }
 
-            // 6. Spesifikasi Sistem & Hardware
+            // 6. System & Hardware Specifications
             val base = state.routerStatus.baseInfo
             val internetWan = state.routerStatus.internetWan
             Card(
@@ -488,21 +488,21 @@ fun ToolsScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        text = "SPESIFIKASI & INFORMASI SISTEM",
+                        text = "SYSTEM SPECIFICATIONS & HARDWARE",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.outline
                     )
-                    DetailRow(label = "Model Perangkat", value = "FiberHome ${base.modelName.ifBlank { "HG6145F3" }}")
-                    DetailRow(label = "Nomor Seri (SN)", value = base.serialNumber.ifBlank { "FHTTC18477E7" })
-                    DetailRow(label = "GPON Serial (gponsn)", value = base.gponSn.ifBlank { "-" })
-                    DetailRow(label = "Versi Firmware", value = base.softwareVersion.ifBlank { "RP3441" })
-                    DetailRow(label = "Versi Hardware", value = base.hardwareVersion.ifBlank { "WKE2.094.476A01" })
-                    DetailRow(label = "MAC Address Gateway", value = base.bridgeMac.ifBlank { "D4:00:68:4E:9D:C8" })
-                    DetailRow(label = "Akses WAN", value = "${base.wanAccessType} (${base.uptimeFormatted})")
-                    DetailRow(label = "Status PPPoE Internet", value = internetWan?.connectionStatus ?: "Connected")
-                    DetailRow(label = "IP Publik WAN", value = internetWan?.externalIp ?: "-")
-                    DetailRow(label = "Gateway ISP", value = internetWan?.remoteIp ?: "-")
+                    DetailRow(label = "Device Model", value = "FiberHome ${base.modelName.ifBlank { "HG6145F3" }}")
+                    DetailRow(label = "Serial Number (SN)", value = base.serialNumber.ifBlank { "FHTTC18477E7" })
+                    DetailRow(label = "GPON Serial", value = base.gponSn.ifBlank { "-" })
+                    DetailRow(label = "Firmware Version", value = base.softwareVersion.ifBlank { "RP3441" })
+                    DetailRow(label = "Hardware Version", value = base.hardwareVersion.ifBlank { "WKE2.094.476A01" })
+                    DetailRow(label = "Gateway MAC Address", value = base.bridgeMac.ifBlank { "D4:00:68:4E:9D:C8" })
+                    DetailRow(label = "WAN Access", value = "${base.wanAccessType} (${base.uptimeFormatted})")
+                    DetailRow(label = "PPPoE Connection", value = internetWan?.connectionStatus ?: "Connected")
+                    DetailRow(label = "WAN Public IP", value = internetWan?.externalIp ?: "-")
+                    DetailRow(label = "ISP Gateway", value = internetWan?.remoteIp ?: "-")
                 }
             }
         }
@@ -554,12 +554,12 @@ private fun MlabSpeedtestCard(
                     }
                     Column {
                         Text(
-                            text = "Speedtest M-Lab (Anti-Curang ISP)",
+                            text = "M-Lab Speedtest (NDT7)",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Uji kecepatan netral melalui jaringan riset global M-Lab",
+                            text = "Neutral speed measurement via global research network",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -567,7 +567,7 @@ private fun MlabSpeedtestCard(
                 }
             }
 
-            // Tampilan Speedometer / Nilai Real-Time
+            // Real-Time Speedometer Display
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
@@ -579,13 +579,13 @@ private fun MlabSpeedtestCard(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     val statusText = when (progress?.phase) {
-                        SpeedtestPhase.LOCATING -> "Mencari server netral M-Lab terdekat..."
-                        SpeedtestPhase.CONNECTING -> "Menghubungkan ke ${progress.serverCity}..."
-                        SpeedtestPhase.DOWNLOAD -> "Menguji Kecepatan Unduh (Download)..."
-                        SpeedtestPhase.UPLOAD -> "Menguji Kecepatan Unggah (Upload)..."
-                        SpeedtestPhase.COMPLETED -> "Uji Kecepatan Selesai"
-                        SpeedtestPhase.ERROR -> "Terjadi kendala koneksi"
-                        else -> if (finalResult != null) "Hasil Terakhir" else "Siap melakukan pengujian"
+                        SpeedtestPhase.LOCATING -> "Locating nearest M-Lab server..."
+                        SpeedtestPhase.CONNECTING -> "Connecting to ${progress.serverCity}..."
+                        SpeedtestPhase.DOWNLOAD -> "Testing Download Speed..."
+                        SpeedtestPhase.UPLOAD -> "Testing Upload Speed..."
+                        SpeedtestPhase.COMPLETED -> "Speedtest Complete"
+                        SpeedtestPhase.ERROR -> "Connection error during test"
+                        else -> if (finalResult != null) "Latest Result" else "Ready to test"
                     }
 
                     Text(
@@ -595,7 +595,7 @@ private fun MlabSpeedtestCard(
                         fontWeight = FontWeight.SemiBold
                     )
 
-                    // Angka Kecepatan
+                    // Speed Metric
                     val displaySpeed = progress?.currentMbps ?: finalResult?.downloadMbps ?: 0.0
                     Row(
                         verticalAlignment = Alignment.Bottom,
@@ -654,7 +654,7 @@ private fun MlabSpeedtestCard(
                             )
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("LATENSI", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                            Text("LATENCY", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
                             Text(
                                 text = "%.0f ms".format(finalResult?.pingMs ?: progress?.pingMs ?: 0.0),
                                 style = MaterialTheme.typography.titleSmall,
@@ -674,14 +674,14 @@ private fun MlabSpeedtestCard(
                 }
             }
 
-            // Tombol Aksi
+            // Action Buttons
             if (isTesting) {
                 OutlinedButton(
                     onClick = onCancel,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Batalkan Pengujian")
+                    Text("Cancel Test")
                 }
             } else {
                 Button(
@@ -692,7 +692,7 @@ private fun MlabSpeedtestCard(
                 ) {
                     Icon(Icons.Rounded.PlayArrow, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (finalResult != null) "Uji Ulang Kecepatan" else "Mulai Speedtest M-Lab")
+                    Text(if (finalResult != null) "Retest Speed" else "Run M-Lab Speedtest")
                 }
             }
         }
@@ -741,12 +741,12 @@ private fun HistoryAndDevicesCard(
                 }
                 Column {
                     Text(
-                        text = "Riwayat Gangguan & Log Perangkat",
+                        text = "Downtime History & Devices",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Catatan pemadaman dan daftar seluruh perangkat Wi-Fi",
+                        text = "Connection drops and registered network devices",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -762,12 +762,12 @@ private fun HistoryAndDevicesCard(
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    text = { Text("Log Gangguan (${disconnections.size})", style = MaterialTheme.typography.labelMedium) }
+                    text = { Text("Downtime Logs (${disconnections.size})", style = MaterialTheme.typography.labelMedium) }
                 )
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    text = { Text("Daftar Perangkat (${devices.size})", style = MaterialTheme.typography.labelMedium) }
+                    text = { Text("Known Devices (${devices.size})", style = MaterialTheme.typography.labelMedium) }
                 )
             }
 
@@ -780,7 +780,7 @@ private fun HistoryAndDevicesCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Tidak ada riwayat pemutusan koneksi internet (100% stabil).",
+                            text = "No downtime recorded (100% uptime stability).",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -815,7 +815,7 @@ private fun HistoryAndDevicesCard(
                                         shape = RoundedCornerShape(6.dp)
                                     ) {
                                         Text(
-                                            text = "Terputus",
+                                            text = "Down",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = CrimsonPrimary,
                                             fontWeight = FontWeight.Bold,
@@ -836,7 +836,7 @@ private fun HistoryAndDevicesCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Belum ada data perangkat tersimpan di database lokal.",
+                            text = "No devices recorded in local database.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -856,7 +856,7 @@ private fun HistoryAndDevicesCard(
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = dev.customName ?: dev.hostname.ifBlank { "Perangkat Wi-Fi" },
+                                            text = dev.customName ?: dev.hostname.ifBlank { "Wi-Fi Device" },
                                             style = MaterialTheme.typography.bodyMedium,
                                             fontWeight = FontWeight.Bold
                                         )
@@ -872,7 +872,7 @@ private fun HistoryAndDevicesCard(
                                     ) {
                                         Icon(
                                             imageVector = Icons.Rounded.Edit,
-                                            contentDescription = "Beri Nama",
+                                            contentDescription = "Edit Alias",
                                             tint = MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.size(18.dp)
                                         )

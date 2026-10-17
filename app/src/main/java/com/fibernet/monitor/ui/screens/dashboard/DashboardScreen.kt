@@ -47,7 +47,7 @@ fun DashboardScreen(
         }
     }
 
-    // Modal Konfirmasi Blokir
+    // Block Confirmation Dialog
     state.deviceToBlock?.let { target ->
         AlertDialog(
             onDismissRequest = { viewModel.dismissBlockConfirmation() },
@@ -61,14 +61,14 @@ fun DashboardScreen(
             },
             title = {
                 Text(
-                    text = "Konfirmasi Pemblokiran",
+                    text = "Block Device Confirmation",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
             },
             text = {
                 Text(
-                    text = "Apakah Anda yakin ingin memblokir akses Wi-Fi untuk '${target.displayName}' (${target.macAddress})? Perangkat ini akan segera diputus dari jaringan oleh router.",
+                    text = "Are you sure you want to block Wi-Fi access for '${target.displayName}' (${target.macAddress})? This device will be disconnected from the network immediately.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
@@ -77,12 +77,12 @@ fun DashboardScreen(
                     onClick = { viewModel.confirmBlockDevice() },
                     colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary)
                 ) {
-                    Text("Ya, Blokir")
+                    Text("Block")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.dismissBlockConfirmation() }) {
-                    Text("Batal")
+                    Text("Cancel")
                 }
             }
         )
@@ -141,7 +141,7 @@ fun DashboardScreen(
                         } else {
                             Icon(
                                 imageVector = Icons.Rounded.Refresh,
-                                contentDescription = "Segarkan",
+                                contentDescription = "Refresh",
                                 tint = CrimsonPrimary
                             )
                         }
@@ -169,7 +169,7 @@ fun DashboardScreen(
                     ) {
                         CircularProgressIndicator(color = CrimsonPrimary)
                         Text(
-                            text = "Menghubungi router FiberHome...",
+                            text = "Connecting to router...",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -220,7 +220,7 @@ fun DashboardScreen(
                             value = state.searchQuery,
                             onValueChange = { viewModel.setSearchQuery(it) },
                             modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("Cari nama, IP, atau MAC perangkat...") },
+                            placeholder = { Text("Search by device name, IP, or MAC...") },
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Rounded.Search,
@@ -233,7 +233,7 @@ fun DashboardScreen(
                                     IconButton(onClick = { viewModel.setSearchQuery("") }) {
                                         Icon(
                                             imageVector = Icons.Rounded.Close,
-                                            contentDescription = "Hapus",
+                                            contentDescription = "Clear",
                                             tint = MaterialTheme.colorScheme.outline
                                         )
                                     }
@@ -268,7 +268,7 @@ fun DashboardScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "PERANGKAT TERHUBUNG (${state.filteredDevices.size})",
+                                text = "CONNECTED DEVICES (${state.filteredDevices.size})",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.outline
@@ -306,7 +306,7 @@ private fun RouterStatusBanner(
     val base = status.baseInfo
     val modelName = base.modelName.ifBlank { "HG6145F3" }
     val firmware = base.softwareVersion.ifBlank { "RP3441" }
-    val uptimeFormatted = base.uptimeFormatted.ifBlank { "Aktif" }
+    val uptimeFormatted = base.uptimeFormatted.ifBlank { "Online" }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -358,14 +358,14 @@ private fun RouterStatusBanner(
 
                 Divider(color = Color.White.copy(alpha = 0.2f))
 
-                // Stats: Klien Aktif, Total Upload, Total Download
+                // Stats: Connected Devices, Total Upload, Total Download
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     StatMetric(
-                        label = "PENGGUNA AKTIF",
-                        value = "$totalDevices Perangkat",
+                        label = "CONNECTED DEVICES",
+                        value = "$totalDevices Devices",
                         icon = Icons.Rounded.Group
                     )
                     StatMetric(
@@ -380,23 +380,23 @@ private fun RouterStatusBanner(
                     )
                 }
 
-                // Baris kedua: Beban CPU & RAM
+                // Second row: CPU & RAM Load
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     StatMetric(
-                        label = "BEBAN CPU",
+                        label = "CPU LOAD",
                         value = "${base.cpuUsagePercent}%",
                         icon = Icons.Rounded.Speed
                     )
                     StatMetric(
-                        label = "PENGGUNAAN RAM",
+                        label = "RAM USAGE",
                         value = "${base.ramUsagePercent}%",
                         icon = Icons.Rounded.Memory
                     )
                     StatMetric(
-                        label = "TRAFFIC PON UNDUH",
+                        label = "PON DOWNLOAD",
                         value = "%.1f MB".format(base.ponDownloadedMb),
                         icon = Icons.Rounded.Download
                     )
@@ -415,9 +415,9 @@ private fun OpticalStatusCard(baseInfo: BaseInfoResponse) {
         else -> SignalWeak
     }
     val rxStatusLabel = when {
-        rxPower >= -24.0 && rxPower <= -8.0 -> "Sangat Baik"
-        rxPower > -27.0 && rxPower < -24.0 -> "Cukup Baik"
-        else -> "Redaman Tinggi / Buruk"
+        rxPower >= -24.0 && rxPower <= -8.0 -> "Optimal"
+        rxPower > -27.0 && rxPower < -24.0 -> "Acceptable"
+        else -> "Poor / High Loss"
     }
 
     Card(
@@ -448,7 +448,7 @@ private fun OpticalStatusCard(baseInfo: BaseInfoResponse) {
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
-                        text = "Status Optik GPON (Kabel Fiber)",
+                        text = "GPON Optical Power",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -474,20 +474,20 @@ private fun OpticalStatusCard(baseInfo: BaseInfoResponse) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 OpticalMetricItem(
-                    label = "Rx Power (Terima)",
+                    label = "Rx Power",
                     value = "${baseInfo.rxPowerRaw} dBm",
                     valueColor = rxColor
                 )
                 OpticalMetricItem(
-                    label = "Tx Power (Pancar)",
+                    label = "Tx Power",
                     value = "${baseInfo.txPowerRaw} dBm"
                 )
                 OpticalMetricItem(
-                    label = "Suhu Modul Optik",
+                    label = "Module Temp",
                     value = "${baseInfo.temperatureRaw} °C"
                 )
                 OpticalMetricItem(
-                    label = "Tegangan Laser",
+                    label = "Laser Voltage",
                     value = "${baseInfo.supplyVoltageRaw} V"
                 )
             }
@@ -547,7 +547,7 @@ private fun WanStatusCard(wan: WanItem) {
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
-                        text = "Status Sambungan Internet (WAN)",
+                        text = "WAN Connection",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -557,7 +557,7 @@ private fun WanStatusCard(wan: WanItem) {
                     shape = RoundedCornerShape(6.dp)
                 ) {
                     Text(
-                        text = if (wan.isConnected) "Terhubung (Connected)" else "Terputus",
+                        text = if (wan.isConnected) "Connected" else "Disconnected",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = if (wan.isConnected) SignalExcellent else SignalWeak,
@@ -573,15 +573,15 @@ private fun WanStatusCard(wan: WanItem) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("IP Publik:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                    Text("Public IP:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
                     Text(wan.externalIp.ifBlank { "-" }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                 }
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Gateway ISP:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                    Text("ISP Gateway:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
                     Text(wan.remoteIp.ifBlank { "-" }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 }
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("DNS Primer:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                    Text("Primary DNS:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
                     Text(wan.dnsServers.split(",").firstOrNull() ?: "-", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 }
             }
@@ -639,7 +639,7 @@ private fun FilterChipsRow(
             FilterChip(
                 selected = selectedTab == DeviceFilterTab.ALL,
                 onClick = { onSelect(DeviceFilterTab.ALL) },
-                label = { Text("Semua ($allCount)") },
+                label = { Text("All ($allCount)") },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = CrimsonPrimary,
                     selectedLabelColor = Color.White
@@ -672,7 +672,7 @@ private fun FilterChipsRow(
             FilterChip(
                 selected = selectedTab == DeviceFilterTab.LAN,
                 onClick = { onSelect(DeviceFilterTab.LAN) },
-                label = { Text("Kabel LAN ($lanCount)") },
+                label = { Text("Ethernet LAN ($lanCount)") },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = BandLan,
                     selectedLabelColor = Color.White
@@ -705,13 +705,13 @@ private fun EmptyDevicePlaceholder(searchActive: Boolean) {
                 tint = MaterialTheme.colorScheme.outline
             )
             Text(
-                text = if (searchActive) "Tidak ada perangkat yang cocok" else "Tidak ada perangkat terhubung",
+                text = if (searchActive) "No matching devices found" else "No devices connected",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = if (searchActive) "Coba periksa kata kunci pencarian Anda" else "Pastikan Wi-Fi router aktif dan ada perangkat yang tersambung",
+                text = if (searchActive) "Check your search keyword or clear filters" else "Ensure Wi-Fi is active and devices are connected",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline
             )

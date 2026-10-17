@@ -26,7 +26,7 @@ class RouterAlertWorker(
     companion object {
         const val WORK_NAME = "router_alert_worker"
         const val CHANNEL_ID = "fibernet_alerts"
-        const val CHANNEL_NAME = "Peringatan Router & Jaringan"
+        const val CHANNEL_NAME = "FiberNet Router Alerts"
 
         fun schedule(context: Context) {
             val constraints = Constraints.Builder()
@@ -108,8 +108,8 @@ class RouterAlertWorker(
                         val displayName = dev.hostName.ifBlank { dev.macAddress }
                         showNotification(
                             id = (1000..9999).random(),
-                            title = "Perangkat Baru Terdeteksi",
-                            message = "Perangkat '$displayName' (${dev.ipAddress}) baru saja terhubung ke jaringan Wi-Fi Anda."
+                            title = "New Device Detected",
+                            message = "Device '$displayName' (${dev.ipAddress}) just connected to your Wi-Fi network."
                         )
                     }
                 }

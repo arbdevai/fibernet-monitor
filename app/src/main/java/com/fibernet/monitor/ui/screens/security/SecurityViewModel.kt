@@ -66,10 +66,10 @@ class SecurityViewModel(
 
     fun submitManualBlock() {
         val mac = _uiState.value.inputMac.trim()
-        val name = _uiState.value.inputName.trim().ifBlank { "Perangkat Blokir" }
+        val name = _uiState.value.inputName.trim().ifBlank { "Blocked Device" }
 
         if (!isValidMac(mac)) {
-            _uiState.update { it.copy(errorMessage = "Format MAC Address tidak valid (Contoh: AA:BB:CC:DD:EE:FF)") }
+            _uiState.update { it.copy(errorMessage = "Invalid MAC address format (Example: AA:BB:CC:DD:EE:FF)") }
             return
         }
 
@@ -80,7 +80,7 @@ class SecurityViewModel(
                 _uiState.update {
                     it.copy(
                         isActionInProgress = false,
-                        successMessage = "MAC $mac berhasil ditambahkan ke daftar blokir router."
+                        successMessage = "MAC $mac added to router blocklist."
                     )
                 }
                 loadFilterList()
@@ -88,7 +88,7 @@ class SecurityViewModel(
                 _uiState.update {
                     it.copy(
                         isActionInProgress = false,
-                        errorMessage = "Gagal memblokir: ${res.exceptionOrNull()?.message}"
+                        errorMessage = "Failed to block device: ${res.exceptionOrNull()?.message}"
                     )
                 }
             }
@@ -114,7 +114,7 @@ class SecurityViewModel(
                 _uiState.update {
                     it.copy(
                         isActionInProgress = false,
-                        successMessage = "Blokir untuk MAC ${target.mac} berhasil dihapus."
+                        successMessage = "MAC ${target.mac} unblocked successfully."
                     )
                 }
                 loadFilterList()
@@ -122,7 +122,7 @@ class SecurityViewModel(
                 _uiState.update {
                     it.copy(
                         isActionInProgress = false,
-                        errorMessage = "Gagal membuka blokir: ${res.exceptionOrNull()?.message}"
+                        errorMessage = "Failed to unblock device: ${res.exceptionOrNull()?.message}"
                     )
                 }
             }

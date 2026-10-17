@@ -3,7 +3,8 @@ package com.fibernet.monitor.data.network
 import com.fibernet.monitor.data.crypto.RouterCrypto
 import com.fibernet.monitor.data.model.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -26,11 +27,14 @@ class RouterApiClient {
     }
 
     private val client: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
-        .writeTimeout(15, TimeUnit.SECONDS)
+        .connectTimeout(12, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .writeTimeout(12, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
         .build()
+
+    // Bounded concurrency (maksimal 2 request simultan) agar CPU router embedded tidak drop/hang
+    private val requestSemaphore = Semaphore(2)
 
     @Volatile
     private var lastSessionId: String = ""
@@ -41,18 +45,32 @@ class RouterApiClient {
     @Volatile
     private var isLoggedIn: Boolean = false
 
+    @Volatile
+    private var activeRouterIp: String = ""
+
+    fun resetSession() {
+        lastSessionId = ""
+        currentAesKey = ""
+        isLoggedIn = false
+        activeRouterIp = ""
+    }
+
     private suspend fun <T> safeApiCall(block: suspend () -> T): Result<T> = withContext(Dispatchers.IO) {
-        try {
-            Result.success(block())
-        } catch (e: SocketTimeoutException) {
-            Result.failure(Exception("Koneksi ke router terputus (Timeout). Periksa apakah HP Anda terhubung ke Wi-Fi router."))
-        } catch (e: ConnectException) {
-            Result.failure(Exception("Tidak dapat terhubung ke router. Pastikan IP Router ($e) sudah benar dan terhubung."))
-        } catch (e: UnknownHostException) {
-            Result.failure(Exception("Alamat router tidak ditemukan. Periksa konfigurasi IP Router Anda."))
-        } catch (e: Exception) {
-            val msg = e.message ?: "Terjadi kesalahan pada komunikasi dengan router."
-            Result.failure(Exception(msg))
+        requestSemaphore.withPermit {
+            try {
+                Result.success(block())
+            } catch (e: SocketTimeoutException) {
+                Result.failure(Exception("Connection to router timed out. Please verify Wi-Fi connection."))
+            } catch (e: ConnectException) {
+                resetSession()
+                Result.failure(Exception("Unable to reach router gateway. Please verify router IP address."))
+            } catch (e: UnknownHostException) {
+                resetSession()
+                Result.failure(Exception("Router host not found. Please verify gateway configuration."))
+            } catch (e: Exception) {
+                val msg = e.message ?: "An unexpected router communication error occurred."
+                Result.failure(Exception(msg))
+            }
         }
     }
 
@@ -60,7 +78,7 @@ class RouterApiClient {
         val sessUrl = "http://$ip/cgi-bin/ajax?ajaxmethod=get_refresh_sessionid"
         val sessReq = Request.Builder().url(sessUrl).get().build()
         client.newCall(sessReq).execute().use { resp ->
-            if (!resp.isSuccessful) throw Exception("Gagal mendapatkan refresh sessionid (HTTP ${resp.code})")
+            if (!resp.isSuccessful) throw Exception("Failed to acquire fresh session token (HTTP ${resp.code})")
             val body = resp.body?.string() ?: ""
             val obj = json.parseToJsonElement(body).jsonObject
             val id = obj["sessionid"]?.jsonPrimitive?.content ?: ""
@@ -70,14 +88,19 @@ class RouterApiClient {
     }
 
     suspend fun login(ip: String, username: String, pass: String): Result<Boolean> = safeApiCall {
+        if (ip != activeRouterIp) {
+            resetSession()
+            activeRouterIp = ip
+        }
+
         // 1. Dapatkan acsRandom
         val acsUrl = "http://$ip/cgi-bin/ajax?ajaxmethod=get_acs_random"
         val acsReq = Request.Builder().url(acsUrl).get().build()
         val acsResp = client.newCall(acsReq).execute().use { resp ->
-            if (!resp.isSuccessful) throw Exception("Gagal menghubungi router (HTTP ${resp.code})")
-            val body = resp.body?.string() ?: throw Exception("Respons kosong dari router")
+            if (!resp.isSuccessful) throw Exception("Failed to contact router (HTTP ${resp.code})")
+            val body = resp.body?.string() ?: throw Exception("Empty response from router")
             val obj = json.parseToJsonElement(body).jsonObject
-            obj["acsRandom"]?.jsonPrimitive?.content ?: throw Exception("Format acsRandom tidak valid")
+            obj["acsRandom"]?.jsonPrimitive?.content ?: throw Exception("Invalid security token from router")
         }
 
         val aesKey = RouterCrypto.extractAesKey(acsResp)
@@ -109,93 +132,83 @@ class RouterApiClient {
             if (loginResult == 0) {
                 lastSessionId = sessId
                 isLoggedIn = true
+                activeRouterIp = ip
                 true
             } else {
                 isLoggedIn = false
-                throw Exception("Login gagal (Kode hasil: $loginResult). Periksa username dan password Anda.")
+                throw Exception("Authentication failed (Code $loginResult). Check username and password.")
             }
         }
     }
 
     private suspend fun ensureAuthenticated(ip: String, username: String, pass: String) {
+        if (ip != activeRouterIp) {
+            resetSession()
+            activeRouterIp = ip
+        }
         if (!isLoggedIn || currentAesKey.isBlank()) {
             val res = login(ip, username, pass)
-            if (res.isFailure) throw res.exceptionOrNull() ?: Exception("Gagal autentikasi router")
+            if (res.isFailure) throw res.exceptionOrNull() ?: Exception("Router authentication failed")
         }
+    }
+
+    // Helper untuk auto re-login saat FiberHome mengembalikan session_valid == 0
+    private suspend fun executeGet(ip: String, user: String, pass: String, method: String): String {
+        ensureAuthenticated(ip, user, pass)
+        val url = "http://$ip/cgi-bin/ajax?ajaxmethod=$method"
+        var respBody = client.newCall(Request.Builder().url(url).get().build()).execute().use { it.body?.string() ?: "" }
+
+        if (respBody.contains("\"session_valid\":0") || respBody.contains("\"session_valid\":\"0\"")) {
+            // Sesi kedaluwarsa atau router berganti, re-login transparan
+            resetSession()
+            ensureAuthenticated(ip, user, pass)
+            respBody = client.newCall(Request.Builder().url(url).get().build()).execute().use { it.body?.string() ?: "" }
+        }
+        return respBody
     }
 
     suspend fun getBaseInfo(ip: String, user: String, pass: String): Result<BaseInfoResponse> = safeApiCall {
-        ensureAuthenticated(ip, user, pass)
-        val url = "http://$ip/cgi-bin/ajax?ajaxmethod=get_base_info"
-        val req = Request.Builder().url(url).get().build()
-        client.newCall(req).execute().use { resp ->
-            val body = resp.body?.string() ?: ""
-            json.decodeFromString<BaseInfoResponse>(body)
-        }
+        val body = executeGet(ip, user, pass, "get_base_info")
+        json.decodeFromString<BaseInfoResponse>(body)
     }
 
     suspend fun getAllWanInfo(ip: String, user: String, pass: String): Result<AllWanResponse> = safeApiCall {
-        ensureAuthenticated(ip, user, pass)
-        val url = "http://$ip/cgi-bin/ajax?ajaxmethod=get_allwan_info"
-        val req = Request.Builder().url(url).get().build()
-        client.newCall(req).execute().use { resp ->
-            val body = resp.body?.string() ?: ""
-            json.decodeFromString<AllWanResponse>(body)
-        }
+        val body = executeGet(ip, user, pass, "get_allwan_info")
+        json.decodeFromString<AllWanResponse>(body)
     }
 
     suspend fun getDeviceInfo(ip: String, user: String, pass: String): Result<DeviceInfoResponse> = safeApiCall {
-        ensureAuthenticated(ip, user, pass)
-        val url = "http://$ip/cgi-bin/ajax?ajaxmethod=show_device_info"
-        val req = Request.Builder().url(url).get().build()
-        client.newCall(req).execute().use { resp ->
-            val body = resp.body?.string() ?: ""
-            json.decodeFromString<DeviceInfoResponse>(body)
-        }
+        val body = executeGet(ip, user, pass, "show_device_info")
+        json.decodeFromString<DeviceInfoResponse>(body)
     }
 
     suspend fun getHomeInfo(ip: String, user: String, pass: String): Result<HomeInfoResponse> = safeApiCall {
-        ensureAuthenticated(ip, user, pass)
-        val url = "http://$ip/cgi-bin/ajax?ajaxmethod=get_home_info"
-        val req = Request.Builder().url(url).get().build()
-        client.newCall(req).execute().use { resp ->
-            val body = resp.body?.string() ?: ""
-            json.decodeFromString<HomeInfoResponse>(body)
-        }
+        val body = executeGet(ip, user, pass, "get_home_info")
+        json.decodeFromString<HomeInfoResponse>(body)
     }
 
     suspend fun getLanStatus(ip: String, user: String, pass: String): Result<List<DeviceItem>> = safeApiCall {
-        ensureAuthenticated(ip, user, pass)
-        val url = "http://$ip/cgi-bin/ajax?ajaxmethod=get_lan_status"
-        val req = Request.Builder().url(url).get().build()
-        client.newCall(req).execute().use { resp ->
-            val body = resp.body?.string() ?: ""
-            val parsed = json.decodeFromString<LanStatusResponse>(body)
-            parsed.lanStatus.devices
-        }
+        val body = executeGet(ip, user, pass, "get_lan_status")
+        val parsed = json.decodeFromString<LanStatusResponse>(body)
+        parsed.lanStatus.devices
     }
 
     suspend fun getWifiStatus(ip: String, user: String, pass: String, is5G: Boolean): Result<List<WifiStatusItem>> = safeApiCall {
-        ensureAuthenticated(ip, user, pass)
         val method = if (is5G) "get_wifi_status_5G" else "get_wifi_status"
-        val url = "http://$ip/cgi-bin/ajax?ajaxmethod=$method"
-        val req = Request.Builder().url(url).get().build()
-        client.newCall(req).execute().use { resp ->
-            val body = resp.body?.string() ?: ""
-            val rawList = if (is5G) {
-                json.decodeFromString<WifiStatus5GResponse>(body).list
-            } else {
-                json.decodeFromString<WifiStatus2GResponse>(body).list
-            }
+        val body = executeGet(ip, user, pass, method)
+        val rawList = if (is5G) {
+            json.decodeFromString<WifiStatus5GResponse>(body).list
+        } else {
+            json.decodeFromString<WifiStatus2GResponse>(body).list
+        }
 
-            // Dekripsi SSID dan PreSharedKey menggunakan AES key
-            val key = currentAesKey
-            rawList.map { item ->
-                item.copy(
-                    ssid = RouterCrypto.decrypt(item.ssid, key),
-                    preSharedKey = RouterCrypto.decrypt(item.preSharedKey, key)
-                )
-            }
+        // Dekripsi SSID dan PreSharedKey menggunakan AES key aktif
+        val key = currentAesKey
+        rawList.map { item ->
+            item.copy(
+                ssid = RouterCrypto.decrypt(item.ssid, key),
+                preSharedKey = RouterCrypto.decrypt(item.preSharedKey, key)
+            )
         }
     }
 
@@ -235,15 +248,10 @@ class RouterApiClient {
     }
 
     suspend fun getWifiTxPower(ip: String, user: String, pass: String, is5G: Boolean): Result<Int> = safeApiCall {
-        ensureAuthenticated(ip, user, pass)
         val method = if (is5G) "getWlanControl_5G" else "getWlanControl"
-        val url = "http://$ip/cgi-bin/ajax?ajaxmethod=$method"
-        val req = Request.Builder().url(url).get().build()
-        client.newCall(req).execute().use { resp ->
-            val body = resp.body?.string() ?: ""
-            val parsed = json.decodeFromString<WlanControlResponse>(body)
-            parsed.transmitPower.toIntOrNull() ?: 100
-        }
+        val body = executeGet(ip, user, pass, method)
+        val parsed = json.decodeFromString<WlanControlResponse>(body)
+        parsed.transmitPower.toIntOrNull() ?: 100
     }
 
     suspend fun setWifiTxPower(
@@ -267,13 +275,8 @@ class RouterApiClient {
     }
 
     suspend fun getMacFilterInfo(ip: String, user: String, pass: String): Result<MacFilterResponse> = safeApiCall {
-        ensureAuthenticated(ip, user, pass)
-        val url = "http://$ip/cgi-bin/ajax?ajaxmethod=get_ipv4_mac_filter_info"
-        val req = Request.Builder().url(url).get().build()
-        client.newCall(req).execute().use { resp ->
-            val body = resp.body?.string() ?: ""
-            json.decodeFromString<MacFilterResponse>(body)
-        }
+        val body = executeGet(ip, user, pass, "get_ipv4_mac_filter_info")
+        json.decodeFromString<MacFilterResponse>(body)
     }
 
     suspend fun blockMacAddress(
@@ -284,7 +287,6 @@ class RouterApiClient {
     ): Result<Boolean> = safeApiCall {
         ensureAuthenticated(ip, user, pass)
 
-        // 1. Pastikan MAC Filter diaktifkan dalam mode "black" (Blacklist)
         val enableSess = getFreshSessionId(ip)
         val enableForm = FormBody.Builder()
             .add("ajaxmethod", "set_ipv4_mac_filter_info")
@@ -296,7 +298,6 @@ class RouterApiClient {
             .build()
         client.newCall(Request.Builder().url("http://$ip/cgi-bin/ajax").post(enableForm).build()).execute().close()
 
-        // 2. Tambahkan aturan blokir MAC
         val addSess = getFreshSessionId(ip)
         val addForm = FormBody.Builder()
             .add("ajaxmethod", "set_ipv4_mac_filter_info")
@@ -344,15 +345,17 @@ class RouterApiClient {
             .add("_", System.currentTimeMillis().toString())
             .build()
         val req = Request.Builder().url("http://$ip/cgi-bin/ajax").post(form).build()
-        client.newCall(req).execute().use { resp -> resp.isSuccessful }
+        client.newCall(req).execute().use { resp ->
+            resetSession()
+            resp.isSuccessful
+        }
     }
 
     suspend fun triggerWps(ip: String, user: String, pass: String): Result<Boolean> = safeApiCall {
         ensureAuthenticated(ip, user, pass)
         val freshSessionId = getFreshSessionId(ip)
         val form = FormBody.Builder()
-            .add("ajaxmethod", "set_wps_pin_button")
-            .add("WPS_PBC", "1")
+            .add("ajaxmethod", "set_wps_pbc")
             .add("sessionid", freshSessionId)
             .add("_", System.currentTimeMillis().toString())
             .build()
@@ -360,93 +363,79 @@ class RouterApiClient {
         client.newCall(req).execute().use { resp -> resp.isSuccessful }
     }
 
-    suspend fun runPing(
+    suspend fun runPingTest(
         ip: String,
         user: String,
         pass: String,
-        host: String
+        host: String,
+        wanUrl: String
     ): Result<PingResultResponse> = safeApiCall {
         ensureAuthenticated(ip, user, pass)
-
-        // 1. Dapatkan objek URL WAN Internet secara dinamis
-        val allWan = getAllWanInfo(ip, user, pass).getOrNull()
-        val internetWan = allWan?.wanList?.find { it.serviceList.contains("INTERNET", ignoreCase = true) }
-            ?: allWan?.wanList?.firstOrNull()
-        val wanUrl = internetWan?.wanUrl ?: "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1."
-
-        // 2. Trigger do_ping
-        val freshSessionId = getFreshSessionId(ip)
+        val sess1 = getFreshSessionId(ip)
         val startForm = FormBody.Builder()
-            .add("ajaxmethod", "do_ping")
-            .add("address", host)
-            .add("count", "4")
+            .add("ajaxmethod", "set_ping_info")
+            .add("sessionid", sess1)
+            .add("action", "start")
+            .add("host", host.trim())
             .add("WAN_url", wanUrl)
             .add("IPVersion", "1")
-            .add("X_FH_WhoRequest", "web")
-            .add("sessionid", freshSessionId)
+            .add("NumberOfRepetitions", "4")
+            .add("DataBlockSize", "32")
+            .add("Timeout", "1000")
+            .add("_", System.currentTimeMillis().toString())
+            .build()
+        client.newCall(Request.Builder().url("http://$ip/cgi-bin/ajax").post(startForm).build()).execute().close()
+
+        kotlinx.coroutines.delay(2000)
+
+        val sess2 = getFreshSessionId(ip)
+        val queryForm = FormBody.Builder()
+            .add("ajaxmethod", "get_ping_info")
+            .add("sessionid", sess2)
             .add("_", System.currentTimeMillis().toString())
             .build()
 
-        val startReq = Request.Builder().url("http://$ip/cgi-bin/ajax").post(startForm).build()
-        client.newCall(startReq).execute().close()
-
-        // 3. Polling get_ping_result sampai selesai (maksimal 6 siklus)
-        var lastResult = PingResultResponse()
-        for (i in 0 until 6) {
-            delay(1500)
-            val resUrl = "http://$ip/cgi-bin/ajax?ajaxmethod=get_ping_result&_=${System.currentTimeMillis()}"
-            val resReq = Request.Builder().url(resUrl).get().build()
-            client.newCall(resReq).execute().use { resp ->
-                val body = resp.body?.string() ?: ""
-                val parsed = json.decodeFromString<PingResultResponse>(body)
-                lastResult = parsed
-                if (parsed.isComplete) {
-                    return@safeApiCall parsed
-                }
-            }
+        client.newCall(Request.Builder().url("http://$ip/cgi-bin/ajax").post(queryForm).build()).execute().use { resp ->
+            val body = resp.body?.string() ?: ""
+            json.decodeFromString<PingResultResponse>(body)
         }
-        lastResult
     }
 
     suspend fun runTraceroute(
         ip: String,
         user: String,
         pass: String,
-        host: String
+        host: String,
+        wanUrl: String
     ): Result<List<String>> = safeApiCall {
         ensureAuthenticated(ip, user, pass)
-
-        val allWan = getAllWanInfo(ip, user, pass).getOrNull()
-        val internetWan = allWan?.wanList?.find { it.serviceList.contains("INTERNET", ignoreCase = true) }
-            ?: allWan?.wanList?.firstOrNull()
-        val wanUrl = internetWan?.wanUrl ?: "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1."
-
-        val freshSessionId = getFreshSessionId(ip)
-        val form = FormBody.Builder()
-            .add("ajaxmethod", "do_traceroute")
-            .add("address", host)
+        val sess1 = getFreshSessionId(ip)
+        val startForm = FormBody.Builder()
+            .add("ajaxmethod", "set_traceroute_info")
+            .add("sessionid", sess1)
+            .add("action", "start")
+            .add("host", host.trim())
             .add("WAN_url", wanUrl)
             .add("IPVersion", "1")
-            .add("X_FH_WhoRequest", "web")
-            .add("sessionid", freshSessionId)
+            .add("MaxHopCount", "15")
+            .add("Timeout", "2000")
+            .add("_", System.currentTimeMillis().toString())
+            .build()
+        client.newCall(Request.Builder().url("http://$ip/cgi-bin/ajax").post(startForm).build()).execute().close()
+
+        kotlinx.coroutines.delay(3000)
+
+        val sess2 = getFreshSessionId(ip)
+        val queryForm = FormBody.Builder()
+            .add("ajaxmethod", "get_traceroute_info")
+            .add("sessionid", sess2)
             .add("_", System.currentTimeMillis().toString())
             .build()
 
-        client.newCall(Request.Builder().url("http://$ip/cgi-bin/ajax").post(form).build()).execute().close()
-
-        var hops = emptyList<String>()
-        for (i in 0 until 8) {
-            delay(2000)
-            val resUrl = "http://$ip/cgi-bin/ajax?ajaxmethod=get_traceroute_result&_=${System.currentTimeMillis()}"
-            client.newCall(Request.Builder().url(resUrl).get().build()).execute().use { resp ->
-                val body = resp.body?.string() ?: ""
-                val parsed = json.decodeFromString<TracerouteResultResponse>(body)
-                hops = parsed.hops
-                if (parsed.diagnosticsState.equals("Complete", ignoreCase = true)) {
-                    return@safeApiCall hops
-                }
-            }
+        client.newCall(Request.Builder().url("http://$ip/cgi-bin/ajax").post(queryForm).build()).execute().use { resp ->
+            val body = resp.body?.string() ?: ""
+            val parsed = json.decodeFromString<TracerouteResultResponse>(body)
+            parsed.hops
         }
-        hops
     }
 }
