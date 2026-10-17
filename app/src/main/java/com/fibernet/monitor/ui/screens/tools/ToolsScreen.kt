@@ -349,12 +349,12 @@ fun ToolsScreen(
                                     color = MaterialTheme.colorScheme.outline
                                 )
                                 Text(
-                                    text = "Target: ${res.targetHost} • Terkirim: ${res.packetsSent} • Diterima: ${res.packetsReceived} (${res.lossPercentage} loss)",
+                                    text = "Status: ${if (res.isComplete) "Selesai" else res.diagnosticsState} • Berhasil: ${res.successCount} • Gagal: ${res.failureCount}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    text = "Latensi: Min ${res.minRttMs} ms | Avg ${res.avgRttMs} ms | Max ${res.maxRttMs} ms",
+                                    text = "Latensi: Min ${res.minResponseTime} ms | Avg ${res.avgResponseTime} ms | Max ${res.maxResponseTime} ms",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = SignalExcellent

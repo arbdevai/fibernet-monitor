@@ -14,6 +14,7 @@ import com.fibernet.monitor.R
 import com.fibernet.monitor.data.db.FiberNetDatabaseHelper
 import com.fibernet.monitor.data.network.RouterApiClient
 import com.fibernet.monitor.data.preferences.AppPreferences
+import com.fibernet.monitor.data.repository.RouterRepository
 import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 
@@ -51,21 +52,16 @@ class RouterAlertWorker(
         val prefs = AppPreferences(context)
         val settings = prefs.settingsFlow.first()
         val db = FiberNetDatabaseHelper.getInstance(context)
+        val repository = RouterRepository(RouterApiClient(), prefs)
 
-        val client = RouterApiClient(baseUrl = "http://${settings.routerIp}")
-        val loginResult = client.login(settings.username, settings.password)
-        if (loginResult.isFailure) {
-            return Result.retry()
-        }
-
-        // 1. Periksa BaseInfo (Optik, Suhu, Voltase)
-        val baseInfoRes = client.getBaseInfo()
-        baseInfoRes.getOrNull()?.let { base ->
+        val statusRes = repository.getRouterStatus()
+        statusRes.getOrNull()?.let { status ->
+            val base = status.baseInfo
             val rxPower = base.rxPowerDbm
             val txPower = base.txPowerDbm
-            val temp = base.laserTempC
+            val temp = base.temperatureCelsius
 
-            // Simpan riwayat optik ke DB
+            // Simpan riwayat optik ke DB lokal
             db.insertOpticalRecord(rxPower, txPower, temp)
 
             // Peringatan Redaman Optik Drop (< -27.0 dBm)
@@ -85,30 +81,27 @@ class RouterAlertWorker(
                     message = "Suhu modul optik mencapai ${temp}°C. Pastikan sirkulasi udara di sekitar router memadai."
                 )
             }
-        }
 
-        // 2. Periksa Status Sambungan Internet (WAN)
-        val allWanRes = client.getAllWanInfo()
-        allWanRes.getOrNull()?.let { allWan ->
-            val activeWan = allWan.activeWanList.firstOrNull()
-            if (activeWan != null && !activeWan.isConnected) {
+            // Periksa Status Sambungan Internet (WAN)
+            val internetWan = status.internetWan
+            if (internetWan != null && !internetWan.isConnected) {
                 db.insertDisconnection(
                     timestamp = System.currentTimeMillis(),
                     durationSeconds = 0,
-                    reason = "Koneksi PPPoE terputus: ${activeWan.name}"
+                    reason = "Koneksi PPPoE terputus: ${internetWan.name}"
                 )
                 showNotification(
                     id = 103,
                     title = "Internet Terputus (Disconnected)",
-                    message = "Sambungan WAN ${activeWan.name} offline. Router kehilangan koneksi ke server ISP."
+                    message = "Sambungan WAN ${internetWan.name} offline. Router kehilangan koneksi ke server ISP."
                 )
             }
         }
 
-        // 3. Periksa Perangkat Baru yang Terhubung
+        // Periksa Perangkat Baru yang Terhubung
         if (settings.notifyNewDevice) {
-            val lanRes = client.getLanDevices()
-            lanRes.getOrNull()?.let { devices ->
+            val devicesRes = repository.getConnectedDevices()
+            devicesRes.getOrNull()?.let { devices ->
                 for (dev in devices) {
                     val isNew = db.upsertKnownDevice(dev.macAddress, dev.ipAddress, dev.hostName)
                     if (isNew) {
