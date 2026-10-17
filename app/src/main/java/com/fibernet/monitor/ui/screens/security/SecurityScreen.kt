@@ -3,7 +3,7 @@ package com.fibernet.monitor.ui.screens.security
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
@@ -298,7 +298,10 @@ fun SecurityScreen(
                         }
                     }
                 } else {
-                    items(list, key = { it.mac }) { rule ->
+                    itemsIndexed(
+                        items = list,
+                        key = { index, rule -> "${rule.mac}_${rule.id.ifBlank { "rule" }}_$index" }
+                    ) { _, rule ->
                         BlockedRuleCard(
                             rule = rule,
                             onUnblock = { viewModel.showUnblockConfirmation(it) }

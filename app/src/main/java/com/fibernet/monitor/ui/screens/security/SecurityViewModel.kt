@@ -131,8 +131,11 @@ class SecurityViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isActionInProgress = true, macToUnblock = null) }
             val currentList = _uiState.value.filterInfo.filterList
-            val ruleIndex = currentList.indexOfFirst { it.mac.equals(target.mac, ignoreCase = true) }.takeIf { it >= 0 }
-                ?: (target.id.toIntOrNull()?.minus(1) ?: 0)
+            val ruleIndex = if (target.id.isNotBlank()) {
+                currentList.indexOfFirst { it.id == target.id }.takeIf { it >= 0 }
+            } else {
+                currentList.indexOfFirst { it.mac.equals(target.mac, ignoreCase = true) }.takeIf { it >= 0 }
+            } ?: (target.id.toIntOrNull()?.minus(1) ?: 0)
             val res = repository.unblockDevice(
                 mac = target.mac,
                 ruleIndex = ruleIndex,
