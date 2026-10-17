@@ -116,6 +116,21 @@ class RouterAlertWorker(
             }
         }
 
+        // Periksa Pembaruan Aplikasi Otomatis di Background
+        try {
+            val updateManager = com.fibernet.monitor.data.update.AppUpdateManager()
+            val updateRes = updateManager.checkForUpdate(context, com.fibernet.monitor.BuildConfig.VERSION_NAME)
+            updateRes.getOrNull()?.let { updateInfo ->
+                if (updateInfo.isUpdateAvailable) {
+                    showNotification(
+                        id = 999,
+                        title = "Update Available: ${updateInfo.latestVersion}",
+                        message = "New FiberNet Monitor update is available (${updateInfo.latestVersion}). Tap to open and install."
+                    )
+                }
+            }
+        } catch (e: Exception) {}
+
         return Result.success()
     }
 

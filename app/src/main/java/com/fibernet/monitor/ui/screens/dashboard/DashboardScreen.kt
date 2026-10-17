@@ -2,6 +2,7 @@ package com.fibernet.monitor.ui.screens.dashboard
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -32,6 +33,8 @@ import com.fibernet.monitor.ui.theme.*
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
+    updateState: com.fibernet.monitor.data.model.UpdateDownloadState = com.fibernet.monitor.data.model.UpdateDownloadState.Idle,
+    onTriggerUpdate: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -167,6 +170,77 @@ fun DashboardScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
+                    // Banner Update Otomatis (Jika update tersedia / siap dipasang)
+                    if (updateState is com.fibernet.monitor.data.model.UpdateDownloadState.Available ||
+                        updateState is com.fibernet.monitor.data.model.UpdateDownloadState.ReadyToInstall
+                    ) {
+                        item {
+                            val isReady = updateState is com.fibernet.monitor.data.model.UpdateDownloadState.ReadyToInstall
+                            val versionTag = when (updateState) {
+                                is com.fibernet.monitor.data.model.UpdateDownloadState.Available -> updateState.updateInfo.latestVersion
+                                is com.fibernet.monitor.data.model.UpdateDownloadState.ReadyToInstall -> updateState.updateInfo.latestVersion
+                                else -> ""
+                            }
+                            Card(
+                                shape = RoundedCornerShape(14.dp),
+                                colors = CardDefaults.cardColors(containerColor = CrimsonContainerLight),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onTriggerUpdate() }
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(CircleShape)
+                                                .background(CrimsonPrimary),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = if (isReady) Icons.Rounded.CheckCircle else Icons.Rounded.SystemUpdate,
+                                                contentDescription = null,
+                                                tint = Color.White,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                        Column {
+                                            Text(
+                                                text = if (isReady) "Update Ready to Install" else "Update $versionTag Available",
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = OnCrimsonContainerLight
+                                            )
+                                            Text(
+                                                text = if (isReady) "Tap to install downloaded update" else "Tap to view and update app",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = OnCrimsonContainerLight.copy(alpha = 0.8f)
+                                            )
+                                        }
+                                    }
+                                    Button(
+                                        onClick = onTriggerUpdate,
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(if (isReady) "Install" else "Update", style = MaterialTheme.typography.labelMedium)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // 1. Header Banner Status Router
                     item {
                         RouterStatusBanner(

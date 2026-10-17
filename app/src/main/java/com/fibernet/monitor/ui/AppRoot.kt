@@ -70,6 +70,30 @@ fun AppRoot(
     val hasUpdate = settingsState.updateState is com.fibernet.monitor.data.model.UpdateDownloadState.Available ||
                     settingsState.updateState is com.fibernet.monitor.data.model.UpdateDownloadState.ReadyToInstall
 
+    var showUpdateDialog by remember { mutableStateOf(false) }
+
+    // Otomatis munculkan dialog update begitu pembaruan terdeteksi tanpa perlu klik manual
+    LaunchedEffect(settingsState.updateState) {
+        if (settingsState.updateState is com.fibernet.monitor.data.model.UpdateDownloadState.Available ||
+            settingsState.updateState is com.fibernet.monitor.data.model.UpdateDownloadState.ReadyToInstall
+        ) {
+            showUpdateDialog = true
+        }
+    }
+
+    if (showUpdateDialog && (hasUpdate || settingsState.updateState is com.fibernet.monitor.data.model.UpdateDownloadState.Downloading || settingsState.updateState is com.fibernet.monitor.data.model.UpdateDownloadState.Error)) {
+        com.fibernet.monitor.ui.components.AppUpdateDialog(
+            updateState = settingsState.updateState,
+            onDismiss = { showUpdateDialog = false },
+            onDownloadAndInstall = { info ->
+                settingsViewModel.downloadAndInstall(context, info)
+            },
+            onInstallDownloaded = { path ->
+                settingsViewModel.installDownloadedApk(context, path)
+            }
+        )
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
@@ -122,7 +146,11 @@ fun AppRoot(
                 .padding(innerPadding)
         ) { destination ->
             when (destination) {
-                NavDestination.DASHBOARD -> DashboardScreen(viewModel = dashboardViewModel)
+                NavDestination.DASHBOARD -> DashboardScreen(
+                    viewModel = dashboardViewModel,
+                    updateState = settingsState.updateState,
+                    onTriggerUpdate = { showUpdateDialog = true }
+                )
                 NavDestination.SECURITY -> SecurityScreen(viewModel = securityViewModel)
                 NavDestination.WIFI -> WifiControlScreen(viewModel = wifiControlViewModel)
                 NavDestination.TOOLS -> ToolsScreen(viewModel = toolsViewModel)
